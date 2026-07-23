@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#fbf8f1" />
   <meta name="description" content="Second Chance Property Solutions public website and secure Second Chance OS operations portal." />
-  <title>Second Chance Property Solutions · Second Chance OS</title>
+  <title>Second Chance Property Solutions · Second Chance OS RC2.1</title>
 <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Second Chance OS" />
@@ -2781,8 +2781,39 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
         "module-5": { progress: 0, complete: false },
         "module-6": { progress: 0, complete: false }
       },
-      meta: { version: 10.63, createdAt: new Date().toISOString() }
+      meta: { version: "RC2.1", createdAt: new Date().toISOString() }
     };
+  }
+
+  function normalizeStateForRender(input) {
+    const base = defaultState();
+    const source = input && typeof input === "object" ? input : {};
+    const listNames = [
+      "properties", "units", "issues", "invoices", "employees", "phaseProgress",
+      "signoffs", "jobEvents", "notifications", "timeEntries", "serviceRequests",
+      "quotes", "agreements"
+    ];
+    const normalized = { ...base, ...source };
+    listNames.forEach(name => {
+      const value = source[name];
+      normalized[name] = Array.isArray(value)
+        ? value.filter(item => item && typeof item === "object").map(item => ({ ...item }))
+        : [];
+    });
+    normalized.training = source.training && typeof source.training === "object" && !Array.isArray(source.training)
+      ? { ...base.training, ...source.training }
+      : { ...base.training };
+    normalized.meta = source.meta && typeof source.meta === "object" ? { ...base.meta, ...source.meta } : { ...base.meta };
+    if (!normalized.employees.length && authContext?.role !== "client") {
+      normalized.employees.push({
+        id: authContext?.employeeId || "MAR001",
+        name: authContext?.name || "Marquise D. Scott",
+        role: roleLabel(authContext?.role),
+        phone: "", email: authContext?.email || "", hireDate: "", active: true,
+        trainingComplete: false, notes: "Cloud account", authUserId: authContext?.userId || null
+      });
+    }
+    return normalized;
   }
 
   function storageKey() {
@@ -2882,15 +2913,15 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
   }
 
   function propertyName(id) {
-    return state.properties.find(x => x.id === id)?.name || "Unassigned Property";
+    return (Array.isArray(state?.properties) ? state.properties : []).find(x => x?.id === id)?.name || "Unassigned Property";
   }
 
   function employeeName(id) {
-    return state.employees.find(x => x.id === id)?.name || "Unassigned";
+    return (Array.isArray(state?.employees) ? state.employees : []).find(x => x?.id === id)?.name || "Unassigned";
   }
 
   function invoiceBalance(invoice) {
-    return Math.max(0, Number(invoice.amount || 0) - Number(invoice.amountPaid || 0));
+    return Math.max(0, Number(invoice?.amount || 0) - Number(invoice?.amountPaid || 0));
   }
 
   function daysOutstanding(invoice) {
@@ -2971,22 +3002,81 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
     els.connectionLabel.parentElement.title = status.error || (status.lastSyncAt ? `Last synced ${new Date(status.lastSyncAt).toLocaleString()}` : "Data connection status");
   }
 
+  
   function render() {
-    renderAccount();
-    renderConnection();
-    renderNav();
-    let [title, subtitle] = pageInfo[currentPage];
-    if (currentPage === "assignments" && authContext.role === "employee") {
-      title = "My Field Jobs";
-      subtitle = "Accept assignments, control your work session, and continue the eight-phase workflow.";
+    state = normalizeStateForRender(state);
+    try {
+      renderAccount();
+      renderConnection();
+      renderNav();
+      let [title, subtitle] = pageInfo[currentPage] || ["Second Chance OS", "Operations workspace"];
+      if (currentPage === "assignments" && authContext.role === "employee") {
+        title = "My Field Jobs";
+        subtitle = "Accept assignments, control your work session, and continue the eight-phase workflow.";
+      }
+      els.pageTitle.textContent = title;
+      els.pageSubtitle.textContent = subtitle;
+      setPrimaryAction();
+      const renderers = {
+        dashboard: renderDashboard, assignments: renderAssignments, schedule: renderSchedule,
+        time: renderTimeTracking, payroll: renderPayrollProfitability, units: renderUnits,
+        properties: renderProperties, issues: renderIssues, quotes: renderQuotes,
+        agreements: renderAgreements, invoices: renderInvoices, portal: renderClientPortal,
+        reports: renderReports, employees: renderEmployees, training: renderTraining,
+        method: renderMethod, settings: renderSettings
+      };
+      const renderer = renderers[currentPage] || renderDashboard;
+      let markup = "";
+      try {
+        markup = renderer();
+      } catch (pageError) {
+        console.error("Second Chance OS page render failed:", currentPage, pageError);
+        markup = renderEmergencyWorkspace(pageError);
+      }
+      els.appView.innerHTML = typeof markup === "string" ? markup : renderEmergencyWorkspace(new Error("The page returned no display content."));
+      bindPageEvents();
+      if (currentPage === "employees" && authContext.mode === "cloud" && isManagement() && !accessDataLoading && !accessMembers.length && !accessInvites.length) refreshAccessData(false);
+    } catch (error) {
+      console.error("Second Chance OS shell render failed:", error);
+      if (els.appView) els.appView.innerHTML = renderEmergencyWorkspace(error);
     }
-    els.pageTitle.textContent = title;
-    els.pageSubtitle.textContent = subtitle;
-    setPrimaryAction();
-    const renderers = { dashboard: renderDashboard, assignments: renderAssignments, schedule: renderSchedule, time: renderTimeTracking, payroll: renderPayrollProfitability, units: renderUnits, properties: renderProperties, issues: renderIssues, quotes: renderQuotes, agreements: renderAgreements, invoices: renderInvoices, portal: renderClientPortal, reports: renderReports, employees: renderEmployees, training: renderTraining, method: renderMethod, settings: renderSettings };
-    els.appView.innerHTML = renderers[currentPage]();
-    bindPageEvents();
-    if (currentPage === "employees" && authContext.mode === "cloud" && isManagement() && !accessDataLoading && !accessMembers.length && !accessInvites.length) refreshAccessData(false);
+  }
+
+
+
+  function renderEmergencyWorkspace(error) {
+    const units = Array.isArray(state?.units) ? state.units : [];
+    const properties = Array.isArray(state?.properties) ? state.properties : [];
+    const invoices = Array.isArray(state?.invoices) ? state.invoices : [];
+    const issues = Array.isArray(state?.issues) ? state.issues : [];
+    const employees = Array.isArray(state?.employees) ? state.employees : [];
+    const recentUnits = units.slice(0, 8);
+    const unitRows = recentUnits.length
+      ? recentUnits.map(unit => `<tr><td><strong>${escapeHtml(unit?.unitNumber || unit?.id || "Unit")}</strong></td><td>${escapeHtml(properties.find(p => p?.id === unit?.propertyId)?.name || "Unassigned Property")}</td><td>${escapeHtml(unit?.status || unit?.assignmentStatus || "Open")}</td><td>${escapeHtml(unit?.assignedTo || "Unassigned")}</td></tr>`).join("")
+      : `<tr><td colspan="4">No unit records are stored yet.</td></tr>`;
+    return `<section class="metric-grid">
+      ${metricCard("Properties", properties.length, "Cloud records")}
+      ${metricCard("Units", units.length, "All unit records")}
+      ${metricCard("Open Issues", issues.filter(item => String(item?.status || "").toLowerCase() !== "resolved").length, "Findings needing attention")}
+      ${metricCard("Invoices", invoices.length, "Billing records")}
+      ${metricCard("Team", employees.length, "Active records")}
+      ${metricCard("Cloud", authContext?.mode === "cloud" ? "Synced" : "Preview", "Your records remain connected")}
+    </section>
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-header"><div><div class="panel-kicker">SAFE VIEW</div><h2>Your records are loaded</h2></div></div>
+      <p class="subtitle">Second Chance OS recovered the workspace instead of leaving a blank screen. Use the navigation below to continue working.</p>
+      <div class="quick-actions" style="margin-top:16px">
+        ${quickAction("property", "▥", "Add Property", "Create or update a client property")}
+        ${quickAction("unit", "▦", "Add Unit", "Schedule and assign work")}
+        ${quickAction("issue", "!", "Log Finding", "Document damage or safety concerns")}
+        ${quickAction("invoice", "$", "Create Invoice", "Track billing and payments")}
+      </div>
+    </section>
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-header"><div><div class="panel-kicker">RECENT RECORDS</div><h2>Units</h2></div><button class="btn btn-secondary btn-small" data-go="units">View All Units</button></div>
+      <div class="data-table-wrap"><table><thead><tr><th>Unit</th><th>Property</th><th>Status</th><th>Assigned</th></tr></thead><tbody>${unitRows}</tbody></table></div>
+    </section>
+    ${error ? `<details class="notice" style="margin-top:18px"><summary><strong>Technical recovery details</strong></summary><p style="margin:10px 0 0">${escapeHtml(error?.message || String(error))}</p></details>` : ""}`;
   }
 
   function setPrimaryAction() {
@@ -3235,7 +3325,7 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
     return map[type] || "•";
   }
 
-  function notificationItems() { return (state.notifications || []).slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); }
+  function notificationItems() { return (Array.isArray(state?.notifications) ? state.notifications : []).filter(Boolean).slice().sort((a,b)=>String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""))); }
 
   function updateNotificationBadge() {
     if (!els.notificationCount) return;
@@ -3269,29 +3359,40 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
     if(authContext.mode==="cloud") try{await window.SCOSCloud.markAllNotificationsRead(authContext); toast("All notifications marked read.");}catch(error){toast(error.message);}
   }
 
+  
   function metrics() {
+    const units = Array.isArray(state?.units) ? state.units : [];
+    const invoices = Array.isArray(state?.invoices) ? state.invoices : [];
+    const issues = Array.isArray(state?.issues) ? state.issues : [];
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
-    const completed = state.units.filter(u => u.status === "Complete");
+    const safeDate = value => {
+      if (!value) return new Date("1900-01-01T12:00:00");
+      const text = String(value).slice(0, 10);
+      const parsed = new Date(`${text}T12:00:00`);
+      return Number.isNaN(parsed.getTime()) ? new Date("1900-01-01T12:00:00") : parsed;
+    };
+    const completed = units.filter(u => String(u?.status || "").toLowerCase() === "complete" || String(u?.status || "").toLowerCase() === "completed");
     const completedMonth = completed.filter(u => {
-      const d = new Date(`${(u.finishDate || u.scheduledDate || u.createdDate || "1900-01-01").slice(0,10)}T12:00:00`);
+      const d = safeDate(u?.finishDate || u?.scheduledDate || u?.createdDate);
       return d.getMonth() === month && d.getFullYear() === year;
     });
-    const revenue = state.invoices.reduce((sum, x) => sum + Number(x.amountPaid || 0), 0);
-    const revenueMonth = state.invoices.filter(x => {
-      const d = new Date(`${(x.paidDate || x.invoiceDate || "1900-01-01").slice(0,10)}T12:00:00`);
+    const revenue = invoices.reduce((sum, x) => sum + Number(x?.amountPaid || 0), 0);
+    const revenueMonth = invoices.filter(x => {
+      const d = safeDate(x?.paidDate || x?.invoiceDate);
       return d.getMonth() === month && d.getFullYear() === year;
-    }).reduce((sum, x) => sum + Number(x.amountPaid || 0), 0);
-    const outstanding = state.invoices.reduce((sum, x) => sum + invoiceBalance(x), 0);
-    const active = state.units.filter(u => !["Complete", "Cancelled"].includes(u.status)).length;
-    const hours = completed.map(x => Number(x.hours || 0)).filter(Boolean);
+    }).reduce((sum, x) => sum + Number(x?.amountPaid || 0), 0);
+    const outstanding = invoices.reduce((sum, x) => sum + invoiceBalance(x || {}), 0);
+    const active = units.filter(u => !["complete", "completed", "cancelled"].includes(String(u?.status || "").toLowerCase())).length;
+    const hours = completed.map(x => Number(x?.hours || 0)).filter(value => Number.isFinite(value) && value > 0);
     const avgHours = hours.length ? hours.reduce((a,b) => a+b,0) / hours.length : 0;
-    const openIssues = state.issues.filter(x => x.status !== "Resolved").length;
-    const avgPrice = completedMonth.length ? completedMonth.reduce((s,x) => s + Number(x.price || 0), 0) / completedMonth.length : 0;
-    const callbacks = state.units.filter(x => x.callback).length;
+    const openIssues = issues.filter(x => String(x?.status || "").toLowerCase() !== "resolved").length;
+    const avgPrice = completedMonth.length ? completedMonth.reduce((sum,x) => sum + Number(x?.price || 0), 0) / completedMonth.length : 0;
+    const callbacks = units.filter(x => Boolean(x?.callback)).length;
     return { completed: completed.length, completedMonth: completedMonth.length, revenue, revenueMonth, outstanding, active, avgHours, openIssues, avgPrice, callbacks };
   }
+
 
   function renderDashboard() {
     if (authContext.role === "employee") return renderEmployeeDashboard();
@@ -5654,18 +5755,18 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
     if (authContext.mode === "cloud") {
       try {
         const cloudState = await window.SCOSCloud.loadWorkspace(authContext);
-        state = { ...defaultState(), ...cloudState };
+        state = normalizeStateForRender({ ...defaultState(), ...cloudState });
         if (!state.employees.length && isManagement()) {
           state.employees.push({ id: authContext.employeeId || "MAR001", name: authContext.name, role: roleLabel(), phone: "", email: authContext.email, hireDate: "", active: true, trainingComplete: false, notes: "Cloud account", authUserId: authContext.userId });
           window.SCOSCloud.queueOperation({ action: "sync_all", state }, authContext);
         }
       } catch (error) {
         console.error(error);
-        state = loadState();
+        state = normalizeStateForRender(loadState());
         toast(`Cloud data could not load. Using cached records: ${error.message}`);
       }
     } else {
-      state = loadState();
+      state = normalizeStateForRender(loadState());
       ensurePreviewSeed();
       try { localStorage.setItem(storageKey(), JSON.stringify(state)); }
       catch (error) { console.warn("Local cache is unavailable:", error.message); }
