@@ -1,9 +1,0 @@
-SECOND CHANCE PROPERTY SOLUTIONS — CONTRACT WEEK LAUNCH KIT
-
-Upload every file and folder in this package to the root of a GitHub repository.
-Then open Repository Settings > Pages > Source: Deploy from a branch > main / root > Save.
-The public website opens at the repository Pages URL. The app is under /app/.
-After deployment, set the Supabase Site URL and exact Redirect URL to the /app/ address.
-
-Temporary quote email currently used: marquisescott73@gmail.com
-Replace it in index.html when a business email is ready.
