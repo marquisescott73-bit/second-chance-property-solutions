@@ -5782,6 +5782,192 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
     if (authContext.mode === "cloud") window.SCOSCloud.flushQueue(authContext).catch(console.error);
   }
 
+
+
+  /* CONTRACT SAFE WORKSPACE RC3
+     This layer uses the already-authenticated cloud state but renders a simpler,
+     defensive workspace so older or irregular records cannot blank the screen. */
+  function csText(value, fallback = "—") {
+    const text = value === null || value === undefined || value === "" ? fallback : String(value);
+    return escapeHtml(text);
+  }
+
+  function csArray(value) { return Array.isArray(value) ? value.filter(Boolean) : []; }
+
+  function csCard(title, body, actions = "") {
+    return `<article class="record-card"><div><div class="record-title-row"><h3>${csText(title, "Record")}</h3></div>${body}</div>${actions ? `<div class="card-actions">${actions}</div>` : ""}</article>`;
+  }
+
+  function csBanner() {
+    return `<section class="notice" style="margin-bottom:16px"><strong>Contract Safe Workspace</strong> · Your cloud records are connected. This stable view keeps every core section visible while preserving your unit forms, workflow, photos, assignments, quotes, agreements, invoices, and reports.</section>`;
+  }
+
+  function csPropertyName(id) {
+    const item = csArray(state.properties).find(row => String(row?.id || "") === String(id || ""));
+    return item?.name || item?.propertyName || "Unassigned Property";
+  }
+
+  function csEmployeeName(id) {
+    const item = csArray(state.employees).find(row => String(row?.id || "") === String(id || ""));
+    return item?.name || item?.fullName || id || "Unassigned";
+  }
+
+  function csUnitActions(unit) {
+    const id = escapeHtml(unit?.id || "");
+    return `${isManagement() ? `<button class="btn btn-primary btn-small" data-assign-unit="${id}">${unit?.assignedTo ? "Assignment" : "Assign"}</button>` : ""}
+      <button class="btn btn-primary btn-small" data-workflow-unit="${id}">Workflow</button>
+      <button class="btn btn-secondary btn-small" data-photos-unit="${id}">Photos</button>
+      ${authContext?.role !== "client" ? `<button class="btn btn-secondary btn-small" data-edit="unit" data-id="${id}">Edit</button>` : ""}
+      ${isManagement() ? `<button class="btn btn-secondary btn-small" data-invoice-unit="${id}">Invoice</button>` : ""}`;
+  }
+
+  function csUnitCard(unit) {
+    const status = unit?.status || unit?.assignmentStatus || "Open";
+    const phase = Math.max(1, Math.min(8, Number(unit?.phase || 1)));
+    const body = `<div class="record-meta">
+      <span><strong>${csText(csPropertyName(unit?.propertyId))}</strong></span>
+      <span>Unit ${csText(unit?.unitNumber || unit?.id)}</span>
+      <span>${badge(status)}</span>
+      <span>Phase ${phase}: ${csText(phaseNames[phase - 1], "Secure")}</span>
+      <span>Assigned: ${csText(csEmployeeName(unit?.assignedTo))}</span>
+      <span>Scheduled: ${dateLabel(unit?.scheduledDate)}</span>
+      <span>Price: ${money(unit?.price)}</span>
+    </div>`;
+    return csCard(`${csPropertyName(unit?.propertyId)} · Unit ${unit?.unitNumber || unit?.id || "—"}`, body, csUnitActions(unit));
+  }
+
+  function csDashboard() {
+    const units = csArray(state.units);
+    const properties = csArray(state.properties);
+    const issues = csArray(state.issues);
+    const invoices = csArray(state.invoices);
+    const employees = csArray(state.employees);
+    const complete = units.filter(row => ["complete", "completed"].includes(String(row?.status || "").toLowerCase())).length;
+    const active = units.filter(row => !["complete", "completed", "cancelled"].includes(String(row?.status || "").toLowerCase())).length;
+    const openIssues = issues.filter(row => !["resolved", "closed"].includes(String(row?.status || "").toLowerCase())).length;
+    const invoiced = invoices.reduce((sum, row) => sum + Number(row?.amount || 0), 0);
+    const paid = invoices.reduce((sum, row) => sum + Number(row?.amountPaid || 0), 0);
+    return `${csBanner()}<section class="metric-grid">
+      ${metricCard("Properties", properties.length, "Client locations")}
+      ${metricCard("Active Units", active, `${units.length} total units`)}
+      ${metricCard("Completed", complete, "Delivered units")}
+      ${metricCard("Open Issues", openIssues, "Findings needing attention")}
+      ${metricCard("Outstanding", money(Math.max(0, invoiced - paid)), `${invoices.length} invoices`)}
+      ${metricCard("Team", employees.filter(row => row?.active !== false).length, "Active records")}
+    </section>
+    <section class="panel" style="margin-top:18px"><div class="panel-header"><div><div class="panel-kicker">QUICK ACTIONS</div><h2>Run the Operation</h2></div></div><div class="quick-actions">
+      ${quickAction("property", "▥", "Add Property", "Create a client property")}
+      ${quickAction("unit", "▦", "Add Unit", "Schedule and assign a job")}
+      ${quickAction("issue", "!", "Log Finding", "Document damage or safety concerns")}
+      ${quickAction("invoice", "$", "Create Invoice", "Track billing and payment")}
+    </div></section>
+    <section class="panel" style="margin-top:18px"><div class="panel-header"><div><div class="panel-kicker">LATEST UNITS</div><h2>Current Pipeline</h2></div><button class="btn btn-secondary btn-small" data-go="units">View All</button></div>
+      ${units.length ? `<div class="cards-list">${units.slice().sort((a,b)=>String(b?.createdDate||b?.scheduledDate||"").localeCompare(String(a?.createdDate||a?.scheduledDate||""))).slice(0,6).map(csUnitCard).join("")}</div>` : emptyState("▦", "No units added", "Add your first unit to begin the field workflow.", "Add Unit", "unit")}
+    </section>`;
+  }
+
+  function csUnits() {
+    const units = csArray(state.units);
+    return `${csBanner()}<div class="toolbar"><div class="search-wrap"><input id="csUnitSearch" class="search-input" placeholder="Search units, properties, or staff…"></div></div><div id="csUnitList">${units.length ? `<div class="cards-list">${units.map(csUnitCard).join("")}</div>` : emptyState("▦", "No units in the pipeline", "Add a unit to schedule work, upload photos, complete phases, and invoice the client.", "Add Unit", "unit")}</div>`;
+  }
+
+  function csProperties() {
+    const rows = csArray(state.properties);
+    return `${csBanner()}${rows.length ? `<div class="cards-list">${rows.map(item => csCard(item?.name || item?.id, `<div class="record-meta"><span>${csText(item?.managementCompany, "Management company not set")}</span><span>${csText(item?.city || item?.address, "Location not set")}</span><span>Contact: ${csText(item?.primaryContact)}</span><span>${badge(item?.active === false ? "Inactive" : "Active")}</span></div>`, authContext?.role !== "client" ? `<button class="btn btn-secondary btn-small" data-edit="property" data-id="${escapeHtml(item?.id || "")}">Edit</button>` : "")).join("")}</div>` : emptyState("▥", "No properties added", "Create the property record before adding its units.", "Add Property", "property")}`;
+  }
+
+  function csIssues() {
+    const rows = csArray(state.issues);
+    return `${csBanner()}${rows.length ? `<div class="cards-list">${rows.map(item => csCard(`${csPropertyName(item?.propertyId)} · Unit ${item?.unitNumber || "—"}`, `<div class="record-meta"><span><strong>${csText(item?.issueType, "Finding")}</strong></span><span>${csText(item?.area)}</span><span>${badge(item?.priority || "Medium")}</span><span>${badge(item?.status || "Open")}</span></div><p class="subtitle" style="margin-top:10px">${csText(item?.description, "No description")}</p>`, authContext?.role !== "client" ? `<button class="btn btn-secondary btn-small" data-edit="issue" data-id="${escapeHtml(item?.id || "")}">Edit</button>` : "")).join("")}</div>` : emptyState("!", "No issues or findings", "Log damage, safety concerns, or maintenance findings here.", "Log Issue", "issue")}`;
+  }
+
+  function csInvoices() {
+    const rows = csArray(state.invoices);
+    return `${csBanner()}${rows.length ? `<div class="cards-list">${rows.map(item => { const bal=Math.max(0,Number(item?.amount||0)-Number(item?.amountPaid||0)); return csCard(item?.id || "Invoice", `<div class="record-meta"><span>${csPropertyName(item?.propertyId)}</span><span>Unit ${csText(item?.unitNumber)}</span><span>Amount: ${money(item?.amount)}</span><span>Paid: ${money(item?.amountPaid)}</span><span>Balance: <strong>${money(bal)}</strong></span><span>${badge(item?.status || (bal<=0?"Paid":"Open"))}</span></div>`, `<button class="btn btn-primary btn-small" data-view-invoice="${escapeHtml(item?.id || "")}">View Invoice</button>${isManagement()?`<button class="btn btn-secondary btn-small" data-edit="invoice" data-id="${escapeHtml(item?.id || "")}">Edit</button>`:""}`); }).join("")}</div>` : emptyState("$", "No invoices created", "Create an invoice from a unit or add one manually.", "Add Invoice", "invoice")}`;
+  }
+
+  function csAssignments() {
+    const units = csArray(state.units).filter(row => row?.assignedTo || row?.scheduledDate || row?.assignmentStatus);
+    return `${csBanner()}${units.length ? `<div class="cards-list">${units.map(csUnitCard).join("")}</div>` : emptyState("◷", "No assignments yet", "Assign an employee, service date, and arrival window to a unit.", "Assign Job", "unit")}`;
+  }
+
+  function csSchedule() {
+    const units = csArray(state.units).slice().sort((a,b)=>String(a?.scheduledDate||"9999").localeCompare(String(b?.scheduledDate||"9999")));
+    return `${csBanner()}${units.length ? `<div class="cards-list">${units.map(csUnitCard).join("")}</div>` : emptyState("▣", "No scheduled work", "Scheduled units will appear here by service date.", "Add Unit", "unit")}`;
+  }
+
+  function csTime() {
+    const rows = csArray(state.timeEntries);
+    return `${csBanner()}${rows.length ? `<div class="cards-list">${rows.map(item => csCard(item?.id || "Time Entry", `<div class="record-meta"><span>Employee: ${csEmployeeName(item?.employeeId)}</span><span>Unit: ${csText(item?.unitId)}</span><span>Clock in: ${csText(item?.clockIn)}</span><span>Clock out: ${csText(item?.clockOut, "Open")}</span><span>${badge(item?.status || "Open")}</span></div>`)).join("")}</div>` : `<div class="empty-state"><div class="empty-icon">◴</div><h3>No time entries</h3><p>Geofenced clock-ins and approved timecards will appear here.</p></div>`}`;
+  }
+
+  function csPayroll() {
+    const entries = csArray(state.timeEntries);
+    const team = csArray(state.employees);
+    const totalHours = entries.reduce((sum, item) => sum + (typeof timeEntryHours === "function" ? Number(timeEntryHours(item)||0) : 0), 0);
+    return `${csBanner()}<section class="metric-grid">${metricCard("Timecards", entries.length, "Recorded sessions")}${metricCard("Labor Hours", totalHours.toFixed(1), "Calculated hours")}${metricCard("Employees", team.length, "Team records")}${metricCard("Approved", entries.filter(x=>String(x?.status||"").toLowerCase()==="approved").length, "Payroll-ready")}</section><section class="panel" style="margin-top:18px"><div class="panel-header"><div><div class="panel-kicker">PAYROLL PREP</div><h2>Employee Rates</h2></div></div><div class="cards-list">${team.map(item=>csCard(item?.name||item?.id,`<div class="record-meta"><span>${csText(item?.role,"Employee")}</span><span>Rate: ${money(item?.hourlyRate||0)}/hr</span><span>${badge(item?.active===false?"Inactive":"Active")}</span></div>`,isManagement()?`<button class="btn btn-secondary btn-small" data-edit="employee" data-id="${escapeHtml(item?.id||"")}">Edit</button>`:"")).join("") || `<div class="notice">No employee records yet.</div>`}</div></section>`;
+  }
+
+  function csGenericCollection(kind, title, emptyTitle) {
+    const rows = csArray(state[kind]);
+    const type = kind === "quotes" ? "quote" : kind === "agreements" ? "agreement" : kind;
+    return `${csBanner()}${rows.length ? `<div class="cards-list">${rows.map(item => csCard(item?.id || title, `<div class="record-meta"><span>${csPropertyName(item?.propertyId)}</span><span>${badge(item?.status || "Draft")}</span><span>${dateLabel(item?.createdAt || item?.quoteDate || item?.effectiveDate)}</span>${item?.total!==undefined?`<span>Total: ${money(item.total)}</span>`:""}</div>`, `${kind==="quotes"?`<button class="btn btn-primary btn-small" data-view-quote="${escapeHtml(item?.id||"")}">View</button>`:""}${kind==="agreements"?`<button class="btn btn-primary btn-small" data-view-agreement="${escapeHtml(item?.id||"")}">View</button>`:""}${isManagement()?`<button class="btn btn-secondary btn-small" data-edit="${type}" data-id="${escapeHtml(item?.id||"")}">Edit</button>`:""}`)).join("")}</div>` : emptyState("✦", emptyTitle, `Create your first ${title.toLowerCase()} record.`, `Add ${title}`, type)}`;
+  }
+
+  function csTeam() {
+    const rows = csArray(state.employees);
+    return `${csBanner()}${rows.length ? `<div class="cards-list">${rows.map(item=>csCard(item?.name||item?.id,`<div class="record-meta"><span>${csText(item?.role,"Employee")}</span><span>${csText(item?.email)}</span><span>${badge(item?.active===false?"Inactive":"Active")}</span><span>Training: ${item?.trainingComplete?"Complete":"In Progress"}</span></div>`,isManagement()?`<button class="btn btn-secondary btn-small" data-edit="employee" data-id="${escapeHtml(item?.id||"")}">Edit</button>`:"")).join("")}</div>` : emptyState("♟", "No team records", "Invite or add your first employee.", "Add Team Member", "employee")}`;
+  }
+
+  function csPortal() {
+    const props = csArray(state.properties);
+    const requests = csArray(state.serviceRequests);
+    return `${csBanner()}<section class="panel"><div class="panel-header"><div><div class="panel-kicker">AUTHORIZED PROPERTIES</div><h2>Client Workspace</h2></div></div>${props.length?`<div class="cards-list">${props.map(p=>csCard(p?.name||p?.id,`<div class="record-meta"><span>${csText(p?.city||p?.address)}</span><span>${csText(p?.primaryContact)}</span></div>`)).join("")}</div>`:`<div class="notice">No authorized properties are connected to this account.</div>`}</section><section class="panel" style="margin-top:18px"><div class="panel-header"><div><div class="panel-kicker">SERVICE REQUESTS</div><h2>Requests</h2></div></div>${requests.length?`<div class="cards-list">${requests.map(r=>csCard(r?.requestType||r?.id,`<div class="record-meta"><span>${csPropertyName(r?.propertyId)}</span><span>Unit ${csText(r?.unitNumber)}</span><span>${badge(r?.status||"New")}</span><span>${badge(r?.priority||"Medium")}</span></div>`)).join("")}</div>`:`<div class="notice">No service requests yet.</div>`}</section>`;
+  }
+
+  function csReports() {
+    const units=csArray(state.units), invoices=csArray(state.invoices), issues=csArray(state.issues), time=csArray(state.timeEntries);
+    return `${csBanner()}<section class="metric-grid">${metricCard("Units",units.length,"All records")}${metricCard("Completed",units.filter(u=>String(u?.status||"").toLowerCase()==="complete").length,"Delivered")}${metricCard("Invoices",invoices.length,"Billing records")}${metricCard("Open Issues",issues.filter(i=>String(i?.status||"").toLowerCase()!=="resolved").length,"Findings")}${metricCard("Timecards",time.length,"Labor records")}${metricCard("Revenue",money(invoices.reduce((s,i)=>s+Number(i?.amountPaid||0),0)),"Collected")}</section><section class="panel" style="margin-top:18px"><div class="panel-header"><div><div class="panel-kicker">EXPORTS</div><h2>Business Reporting</h2></div></div><div class="button-row"><button class="btn btn-secondary" data-export-launch="units">Units CSV</button><button class="btn btn-secondary" data-export-launch="invoices">Invoices CSV</button><button class="btn btn-secondary" data-export-launch="time">Time CSV</button><button class="btn btn-primary" data-print-reports>Print / Save PDF</button></div></section>`;
+  }
+
+  function csRenderPage(page) {
+    const views = {
+      dashboard: csDashboard, assignments: csAssignments, schedule: csSchedule,
+      time: csTime, payroll: csPayroll, units: csUnits, properties: csProperties,
+      issues: csIssues, quotes: () => csGenericCollection("quotes", "Quote", "No quotes created"),
+      agreements: () => csGenericCollection("agreements", "Agreement", "No agreements created"),
+      invoices: csInvoices, portal: csPortal, reports: csReports, employees: csTeam,
+      training: () => `${csBanner()}${renderTraining()}`,
+      method: () => `${csBanner()}${renderMethod()}`,
+      settings: () => `${csBanner()}${renderSettings()}`
+    };
+    const view = views[page] || csDashboard;
+    let markup = "";
+    try { markup = view(); }
+    catch (error) { markup = `${csBanner()}${renderEmergencyWorkspace(error)}`; }
+    els.appView.innerHTML = markup || `${csBanner()}${renderEmergencyWorkspace(new Error("No page content was generated."))}`;
+    bindPageEvents();
+    const search = document.getElementById("csUnitSearch");
+    if (search) search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      const filtered = csArray(state.units).filter(unit => [unit?.unitNumber, unit?.id, csPropertyName(unit?.propertyId), csEmployeeName(unit?.assignedTo), unit?.status].some(value => String(value || "").toLowerCase().includes(q)));
+      const target = document.getElementById("csUnitList");
+      if (target) target.innerHTML = filtered.length ? `<div class="cards-list">${filtered.map(csUnitCard).join("")}</div>` : `<div class="notice">No units match that search.</div>`;
+      bindPageEvents();
+    });
+  }
+
+  const originalRenderRC3 = render;
+  render = function contractSafeRender() {
+    try { originalRenderRC3(); } catch (error) { console.error("Original workspace render failed", error); }
+    try { csRenderPage(currentPage); }
+    catch (error) {
+      console.error("Contract Safe Workspace failed", error);
+      els.appView.innerHTML = `<section class="notice"><strong>Workspace recovery</strong><p>${escapeHtml(error?.message || String(error))}</p></section>`;
+    }
+  };
+
+
   window.SCOSAuth.bootstrap(startApp);
 })();
 
