@@ -10622,6 +10622,87 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
   applySecondChanceRoute();
 })();
 </script>
+<script>
+(function () {
+  function addProposalLinks() {
+    const operationsLinks = Array.from(
+      document.querySelectorAll("button, a")
+    ).filter(function (item) {
+      return item.textContent
+        .replace(/\s+/g, " ")
+        .trim()
+        .includes("Operations Center");
+    });
 
+    operationsLinks.forEach(function (operationsLink) {
+      const parent = operationsLink.parentElement;
+
+      if (
+        !parent ||
+        parent.querySelector("[data-proposal-center-link]")
+      ) {
+        return;
+      }
+
+      const proposalLink = operationsLink.cloneNode(true);
+
+      proposalLink.removeAttribute("id");
+      proposalLink.removeAttribute("onclick");
+      proposalLink.removeAttribute("data-nav");
+      proposalLink.removeAttribute("aria-current");
+      proposalLink.setAttribute(
+        "data-proposal-center-link",
+        "true"
+      );
+
+      proposalLink
+        .querySelectorAll("[id]")
+        .forEach(function (element) {
+          element.removeAttribute("id");
+        });
+
+      const textParts = proposalLink.querySelectorAll("span");
+
+      if (textParts.length) {
+        textParts[textParts.length - 1].textContent =
+          "Proposal Center";
+      } else {
+        proposalLink.textContent = "✦ Proposal Center";
+      }
+
+      if (proposalLink.tagName === "A") {
+        proposalLink.href = "./proposals.html";
+      } else {
+        proposalLink.type = "button";
+        proposalLink.addEventListener("click", function () {
+          window.location.href = "./proposals.html";
+        });
+      }
+
+      operationsLink.insertAdjacentElement(
+        "afterend",
+        proposalLink
+      );
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      addProposalLinks
+    );
+  } else {
+    addProposalLinks();
+  }
+
+  new MutationObserver(addProposalLinks).observe(
+    document.documentElement,
+    {
+      childList: true,
+      subtree: true
+    }
+  );
+})();
+</script>
 </body>
 </html>
