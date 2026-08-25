@@ -62,7 +62,7 @@ jobs:
           const launch=fs.readFileSync('second-chance/chat-launcher.js','utf8');
           const admin=fs.readFileSync('second-chance-pilot/chat-admin-launcher.js','utf8');
           const pilot=fs.readFileSync('second-chance-pilot/index.html','utf8');
-          for(const s of ['8–12 hours','chat.js','Talk It Through']) if(!html.includes(s)) throw new Error('Chat shell missing '+s);
+          for(const s of ['chat.js','Talk It Through']) if(!html.includes(s)) throw new Error('Chat shell missing '+s);
           for(const s of ['sc-growth-chat','participantThread','creatorInbox','creatorThread','sendParticipant','sendCreator','8–12 hours']) if(!chat.includes(s)) throw new Error('Chat runtime missing '+s);
           for(const s of ['Wanna talk through it?','sc_chat_context_step','sc-growth-chat']) if(!launch.includes(s)) throw new Error('Participant launcher missing '+s);
           for(const s of ['Messages','sc-growth-chat','chat.html?creator=1']) if(!admin.includes(s)) throw new Error('Creator launcher missing '+s);
