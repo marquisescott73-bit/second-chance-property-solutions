@@ -30,7 +30,7 @@ jobs:
           const fs=require('fs');
           const vm=require('vm');
           const dir='second-chance-pilot';
-          for(const f of ['index.html','app.html','app.css','app.js','steps.js','sw.js','manifest.webmanifest','icon.svg']) {
+          for(const f of ['index.html','app.html','app.css','app.js','steps.js','sw.js','opening-cover.svg','manifest.webmanifest','icon.svg']) {
             if(!fs.existsSync(`${dir}/${f}`)) throw new Error(`Missing ${f}`);
           }
           const code=fs.readFileSync(`${dir}/steps.js`,'utf8')+'\n;globalThis.__steps=STEPS;';
@@ -48,9 +48,13 @@ jobs:
           const shell=fs.readFileSync(`${dir}/index.html`,'utf8');
           if(!shell.includes("localStorage.setItem('sc_invite_token'")) throw new Error('Installed app does not persist invite doorway');
           if(!shell.includes("localStorage.getItem('sc_invite_token')")) throw new Error('Installed app does not restore invite doorway');
+          for(const id of ['opening','openingStart','openingAccess','openingCreator']) if(!shell.includes(`id=\"${id}\"`)) throw new Error(`Opening screen missing ${id}`);
+          if(!shell.includes('opening-cover.svg')) throw new Error('Opening screen is not using the journal cover artwork');
+          const cover=fs.readFileSync(`${dir}/opening-cover.svg`,'utf8');
+          if(!cover.includes('WHAT IF YOUR')||!cover.includes('SECOND CHANCE')||!cover.includes('EVERYTHING?')) throw new Error('Opening cover copy is incomplete');
           const html=fs.readFileSync(`${dir}/app.html`,'utf8');
           for(const ref of ['./app.css','./steps.js','./app.js']) if(!html.includes(ref)) throw new Error(`app.html missing ${ref}`);
           const manifest=JSON.parse(fs.readFileSync(`${dir}/manifest.webmanifest`,'utf8'));
           if(manifest.display!=='standalone') throw new Error('PWA must use standalone display');
-          console.log('PASS: 51 steps, 3 levels, rewards, checkpoints, app assets, and installed resume');
+          console.log('PASS: 51 steps, 3 levels, rewards, checkpoints, opening cover, app assets, and installed resume');
           NODE
