@@ -9,7 +9,7 @@
 <title>Second Chance</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./app.css?v=20260824-2103">
+<link rel="stylesheet" href="./app.css?v=20260825-1342">
 <style>
 #boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:#f7f3eb;color:#2f3b35;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
 #boot .bootcard{width:min(430px,100%);background:#fffdfa;border:1px solid #d9d7cf;border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}
@@ -19,13 +19,55 @@
 #boot .debug{margin-top:10px;font-size:11px;line-height:1.4;color:#8a6658;word-break:break-word}
 @keyframes bootpulse{to{opacity:.25;transform:scale(.7)}}
 #boot .retry{display:none;margin:16px auto 0;border:0;background:#c87559;color:#fff;border-radius:14px;padding:11px 16px;font-weight:800}
+
+#opening{position:fixed;inset:0;z-index:5000;overflow:auto;background:linear-gradient(180deg,#fbf5eb 0%,#f3e5d6 100%);color:#2f3b35;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(18px,env(safe-area-inset-top)) 14px max(22px,env(safe-area-inset-bottom))}
+#opening[hidden]{display:none!important}
+.opening-inner{width:min(520px,100%);margin:0 auto;min-height:100%;display:flex;flex-direction:column;align-items:center}
+.opening-mark{width:54px;height:54px;border:1.6px solid #c87559;border-radius:50%;display:grid;place-items:center;color:#c87559;font-family:Georgia,serif;font-size:25px;margin-top:3px}
+.opening-brand{font-family:Georgia,"Times New Roman",serif;font-size:41px;line-height:.95;letter-spacing:-.035em;margin-top:10px;text-align:center;color:#34423b}
+.opening-kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#b06c55;margin-top:8px;text-align:center}
+.opening-headline{font-family:Georgia,"Times New Roman",serif;font-size:31px;line-height:1.05;text-align:center;margin:14px 0 14px;color:#51453e}
+.opening-headline em{color:#c87559;font-style:normal}
+.opening-cover{display:block;width:min(100%,430px);max-height:56vh;object-fit:contain;border-radius:28px;box-shadow:0 24px 58px rgba(82,60,45,.17)}
+.opening-actions{width:min(100%,430px);display:grid;gap:10px;margin-top:16px}
+.opening-btn{min-height:54px;border-radius:16px;padding:12px 16px;font-weight:850;font-size:16px;cursor:pointer}
+.opening-btn.primary{border:0;background:#c87559;color:#fff;box-shadow:0 9px 24px rgba(200,117,89,.18)}
+.opening-btn.secondary{border:1.5px solid #c87559;background:rgba(255,253,248,.74);color:#a65d46}
+.opening-privacy{margin:13px 0 0;font-size:12px;color:#6f6c65;text-align:center;line-height:1.45}
+.opening-hint{min-height:18px;margin-top:9px;font-size:12px;line-height:1.45;color:#965742;text-align:center;max-width:410px}
+.opening-creator{margin:10px 0 4px;border:0;background:transparent;color:#7d7972;font-size:11px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
 #installPrompt{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:80;display:none;align-items:center;gap:8px;background:#2f3b35;color:#fffdfa;border-radius:999px;padding:7px 7px 7px 12px;box-shadow:0 10px 35px rgba(47,59,53,.22);font-size:12px;font-weight:750}
 #installPrompt button{border:0;background:#fffdfa;color:#2f3b35;border-radius:999px;padding:8px 11px;font-weight:800}
-@media(max-width:520px){#installPrompt{left:12px;right:12px;justify-content:space-between}}
+@media(max-width:520px){
+  #installPrompt{left:12px;right:12px;justify-content:space-between}
+  #opening{padding-left:11px;padding-right:11px}
+  .opening-brand{font-size:37px}
+  .opening-headline{font-size:28px}
+  .opening-cover{max-height:55vh}
+}
 </style>
 </head>
 <body>
 <div id="boot"><div class="bootcard"><h1>Second Chance</h1><p id="bootText">Loading your journey…</p><div class="bootdot" id="bootDot"></div><div class="debug" id="bootDebug"></div><button class="retry" id="bootRetry" type="button">Reload app</button></div></div>
+
+<section id="opening" aria-label="Second Chance opening screen">
+  <div class="opening-inner">
+    <div class="opening-mark" aria-hidden="true">↗</div>
+    <div class="opening-brand">Second Chance</div>
+    <div class="opening-kicker">Journal · Reflect · Grow</div>
+    <div class="opening-headline">Your next chapter <em>starts here.</em></div>
+    <img class="opening-cover" src="./opening-cover.svg?v=20260825-1342" alt="Cream Second Chance journal cover reading What if your second chance changed everything?">
+    <div class="opening-actions">
+      <button class="opening-btn primary" id="openingStart" type="button">Start My Second Chance →</button>
+      <button class="opening-btn secondary" id="openingAccess" type="button">I Already Have Access →</button>
+    </div>
+    <div class="opening-privacy">♢ Your journey is private and secure.</div>
+    <div class="opening-hint" id="openingHint" aria-live="polite"></div>
+    <button class="opening-creator" id="openingCreator" type="button">Creator access</button>
+  </div>
+</section>
+
 <div id="app"></div>
 <div id="toast" class="toast" aria-live="polite"></div>
 <div id="installPrompt"><span>Want this on your phone?</span><button id="installBtn" type="button">Add app</button></div>
@@ -47,6 +89,26 @@
     let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}
     if(saved)history.replaceState(null,'',location.pathname+'?invite='+encodeURIComponent(saved));
   }
+
+  const opening=document.getElementById('opening');
+  if(params.get('creator')==='1')opening.hidden=true;
+  const hasDoorway=()=>{
+    const now=new URLSearchParams(location.search);
+    if(now.get('invite'))return true;
+    try{return !!localStorage.getItem('sc_invite_token')}catch{return false}
+  };
+  const enterJourney=()=>{
+    if(hasDoorway()){
+      opening.hidden=true;
+      window.scrollTo(0,0);
+      return;
+    }
+    document.getElementById('openingHint').textContent='This pilot is invite-only right now. Open the personal Second Chance link you were sent, then tap this button.';
+  };
+  document.getElementById('openingStart').addEventListener('click',enterJourney);
+  document.getElementById('openingAccess').addEventListener('click',enterJourney);
+  document.getElementById('openingCreator').addEventListener('click',()=>{location.href=location.pathname+'?creator=1'});
+
   window.__scBootError='';
   window.addEventListener('error',e=>{
     const where=e.filename?(' · '+e.filename.split('/').pop()+':'+(e.lineno||'?')):'';
@@ -64,16 +126,13 @@
   };
 })();
 </script>
-<script src="./steps.js?v=20260824-2103"></script>
+<script src="./steps.js?v=20260825-1342"></script>
 <script>
 (async function loadSecondChance(){
   try{
-    const r=await fetch('./app.js?v=20260824-2103',{cache:'no-store'});
+    const r=await fetch('./app.js?v=20260825-1342',{cache:'no-store'});
     if(!r.ok)throw new Error('Could not load app.js ('+r.status+')');
     const source=await r.text();
-    // Run the app inside an isolated function scope. Android browsers expose
-    // window.top globally, and the app also uses an internal top() helper.
-    // Isolating the runtime prevents those names from colliding.
     const runApp=new Function(source+'\n//# sourceURL=second-chance-runtime.js');
     runApp();
   }catch(e){
@@ -87,7 +146,7 @@ let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});
 btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});
 window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260824-2103').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260825-1342').catch(()=>{}));
 </script>
 </body>
 </html>
