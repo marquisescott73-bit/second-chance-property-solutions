@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f3eb">
+<title>Second Chance — Pilot</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<style>
+html,body{margin:0;width:100%;height:100%;background:#f7f3eb;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#2f3b35}
+#frame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f7f3eb}
+#loading{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#f7f3eb;z-index:2}
+.card{max-width:460px;background:#fffdfa;border:1px solid #d9d7cf;border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}
+h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}.muted{color:#6d7872;line-height:1.55}.dot{width:12px;height:12px;border-radius:50%;background:#c87559;margin:18px auto;animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.25;transform:scale(.7)}}button{border:0;background:#c87559;color:white;border-radius:14px;padding:12px 17px;font-weight:800;font-size:16px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="loading"><div class="card"><h1>Second Chance</h1><div class="muted" id="status">Loading your pilot…</div><div class="dot"></div><button id="retry" hidden>Try again</button></div></div>
+<iframe id="frame" title="Second Chance OS" hidden></iframe>
+<script>
+const SOURCE='https://raw.githubusercontent.com/marquisescott73-bit/second-chance-property-solutions/second-chance-growth-pilot/growth-pilot.html';
+const loading=document.getElementById('loading'),status=document.getElementById('status'),retry=document.getElementById('retry'),frame=document.getElementById('frame');
+async function boot(){retry.hidden=true;status.textContent='Loading your pilot…';try{const r=await fetch(SOURCE,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const html=await r.text();frame.srcdoc=html;frame.hidden=false;loading.style.display='none';}catch(e){status.textContent='Couldn’t load the pilot right now. Tap below and I’ll try it again.';retry.hidden=false;}}
+retry.onclick=boot;boot();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
+</script>
+</body>
+</html>
