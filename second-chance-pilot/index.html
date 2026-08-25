@@ -26,7 +26,7 @@ h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}.mut
 <div id="installBar"><span>Want this to feel like an app?</span><button id="installBtn" type="button">Add to phone</button></div>
 <script>
 const SOURCE='https://raw.githubusercontent.com/marquisescott73-bit/second-chance-property-solutions/second-chance-growth-pilot/growth-pilot.html';
-const CACHE_KEY='second_chance_pilot_shell_v4';
+const CACHE_KEY='second_chance_pilot_shell_v5';
 const loading=document.getElementById('loading'),status=document.getElementById('status'),retry=document.getElementById('retry'),frame=document.getElementById('frame');
 
 function patchPilot(source){
@@ -40,140 +40,76 @@ function patchPilot(source){
   const timers=new Map();
   let saveToast;
 
-  function currentStep(){
-    try{return Math.max(1,Math.min(51,(appState.selectedDay||0)+1));}catch{return 1;}
-  }
+  function currentStep(){try{return Math.max(1,Math.min(51,(appState.selectedDay||0)+1));}catch{return 1;}}
   function draftable(el){
     if(!el||!el.id)return false;
+    if(/^fb/i.test(el.id))return false;
     if(el.tagName==='TEXTAREA')return true;
     if(el.tagName!=='INPUT')return false;
     const type=(el.type||'text').toLowerCase();
-    return type==='text' && !/pin|password|email/i.test(el.id);
+    return type==='text'&&!/pin|password|email/i.test(el.id);
   }
   function toast(text){
     if(!saveToast){
-      saveToast=document.createElement('div');
-      saveToast.setAttribute('aria-live','polite');
-      Object.assign(saveToast.style,{position:'fixed',right:'14px',bottom:'14px',zIndex:'9999',background:'#2f3b35',color:'#fffdfa',borderRadius:'999px',padding:'8px 12px',fontSize:'11px',fontWeight:'800',boxShadow:'0 8px 24px rgba(47,59,53,.18)',opacity:'0',transition:'opacity .2s ease',pointerEvents:'none'});
-      document.body.appendChild(saveToast);
+      saveToast=document.createElement('div');saveToast.setAttribute('aria-live','polite');
+      Object.assign(saveToast.style,{position:'fixed',right:'14px',bottom:'14px',zIndex:'9999',background:'#2f3b35',color:'#fffdfa',borderRadius:'999px',padding:'8px 12px',fontSize:'11px',fontWeight:'800',boxShadow:'0 8px 24px rgba(47,59,53,.18)',opacity:'0',transition:'opacity .2s ease',pointerEvents:'none'});document.body.appendChild(saveToast);
     }
-    saveToast.textContent=text;saveToast.style.opacity='1';
-    clearTimeout(saveToast._hide);saveToast._hide=setTimeout(()=>saveToast.style.opacity='0',1300);
+    saveToast.textContent=text;saveToast.style.opacity='1';clearTimeout(saveToast._hide);saveToast._hide=setTimeout(()=>saveToast.style.opacity='0',1400);
   }
   function restoreDrafts(root=document){
-    let drafts=[];try{drafts=appState.state?.drafts||[];}catch{return;}
-    if(!drafts.length)return;
-    const step=currentStep();
-    root.querySelectorAll('textarea[id],input[id]').forEach(el=>{
-      if(!draftable(el))return;
-      const d=drafts.find(x=>x.step_number===step&&x.draft_key===el.id);
-      if(!d||!d.body)return;
-      if((el.value||'').trim()===''){
-        el.value=d.body;
-        el.dispatchEvent(new Event('input',{bubbles:true}));
-      }
-    });
+    let drafts=[];try{drafts=appState.state?.drafts||[];}catch{return;}if(!drafts.length)return;const step=currentStep();
+    root.querySelectorAll('textarea[id],input[id]').forEach(el=>{if(!draftable(el))return;const d=drafts.find(x=>x.step_number===step&&x.draft_key===el.id);if(!d||!d.body)return;if((el.value||'').trim()===''){el.value=d.body;el.dispatchEvent(new Event('input',{bubbles:true}));}});
   }
   function saveDraft(el){
-    if(!draftable(el))return;
-    let token='',pin='';try{token=appState.token||'';pin=appState.pin||sessionStorage.getItem('sc_pin')||'';}catch{}
-    if(!token||!pin)return;
-    const step=currentStep(),key=el.id,text=el.value||'';
-    clearTimeout(timers.get(key));
-    timers.set(key,setTimeout(async()=>{
-      try{
-        const result=await post(PARTICIPANT_FN,{op:'save_draft',token,pin,stepNumber:step,draftKey:key,text});
-        if(appState.state){
-          appState.state.drafts=appState.state.drafts||[];
-          const i=appState.state.drafts.findIndex(d=>d.step_number===step&&d.draft_key===key);
-          if(text.trim()){
-            const row={step_number:step,draft_key:key,body:text,updated_at:result.updated_at||new Date().toISOString()};
-            if(i>=0)appState.state.drafts[i]=row;else appState.state.drafts.push(row);
-          }else if(i>=0){appState.state.drafts.splice(i,1);}
-        }
-        toast('Saved privately ✓');
-      }catch{}
-    },850));
+    if(!draftable(el))return;let token='',pin='';try{token=appState.token||'';pin=appState.pin||sessionStorage.getItem('sc_pin')||'';}catch{}if(!token||!pin)return;
+    const step=currentStep(),key=el.id,text=el.value||'';clearTimeout(timers.get(key));timers.set(key,setTimeout(async()=>{try{const result=await post(PARTICIPANT_FN,{op:'save_draft',token,pin,stepNumber:step,draftKey:key,text});if(appState.state){appState.state.drafts=appState.state.drafts||[];const i=appState.state.drafts.findIndex(d=>d.step_number===step&&d.draft_key===key);if(text.trim()){const row={step_number:step,draft_key:key,body:text,updated_at:result.updated_at||new Date().toISOString()};if(i>=0)appState.state.drafts[i]=row;else appState.state.drafts.push(row);}else if(i>=0)appState.state.drafts.splice(i,1);}toast('Saved privately ✓');}catch{}},850));
   }
-
-  function scoreMap(checkpoint,rows){
-    const map={};(rows||[]).filter(s=>s.checkpoint===checkpoint).forEach(s=>map[s.category]=Number(s.score));return map;
-  }
-  function biggestScoreMove(rows){
-    const start=scoreMap('start',rows),after=scoreMap('after_wakeup',rows);let best=null;
-    Object.keys(start).forEach(k=>{if(after[k]==null)return;const diff=after[k]-start[k];if(!best||diff>best.diff)best={key:k,diff};});
-    return best;
-  }
+  function scoreMap(checkpoint,rows){const map={};(rows||[]).filter(s=>s.checkpoint===checkpoint).forEach(s=>map[s.category]=Number(s.score));return map;}
+  function biggestScoreMove(rows){const start=scoreMap('start',rows),after=scoreMap('after_wakeup',rows);let best=null;Object.keys(start).forEach(k=>{if(after[k]==null)return;const diff=after[k]-start[k];if(!best||diff>best.diff)best={key:k,diff};});return best;}
   function levelName(step){return step<=7?'WAKE UP':step<=21?'LOCK IN':'BECOME';}
   function stepLabel(step){try{return step<=7?(dayNames[step-1]||('Step '+step)):('Step '+step);}catch{return 'Step '+step;}}
 
+  function feedbackForm(checkpoint='general'){
+    const root=document.querySelector('#participantView');if(!root||document.getElementById('pilotFeedback'))return;
+    const node=document.createElement('div');node.className='panel';node.id='pilotFeedback';
+    node.innerHTML='<div class="tag">Pilot feedback · shared with creator</div><h2>Tell me if this shit actually works.</h2><p class="talk">This box is different from your private reflections. What you put here is feedback for improving Second Chance, so the creator <strong>can see it.</strong></p><div class="privacy">🔓 <strong>Shared feedback.</strong> Your private journal stays private. These answers are intentionally sent to the pilot creator.</div><h3>How did this part feel?</h3><div class="chips" id="fbRating">'+[1,2,3,4,5].map(n=>'<button class="chip" type="button" data-rating="'+n+'" aria-pressed="false">'+n+(n===1?' 😬':n===5?' 🔥':'')+'</button>').join('')+'</div><div class="field"><label>What hit?</label><textarea id="fbHit" placeholder="What made you think, move, or feel seen?"></textarea></div><div class="field"><label>What felt off, corny, confusing, or too much?</label><textarea id="fbOff" placeholder="Say it straight. That is what testing is for."></textarea></div><div class="field"><label>What would make this better?</label><textarea id="fbChange" placeholder="If you could change one thing..."></textarea></div><div class="actions"><button class="btn" id="fbSend" type="button">Send pilot feedback</button><button class="btn secondary" id="fbHide" type="button">Not right now</button></div><div id="fbMsg"></div>';
+    root.appendChild(node);let rating=0;
+    node.querySelectorAll('[data-rating]').forEach(b=>b.onclick=()=>{rating=Number(b.dataset.rating);node.querySelectorAll('[data-rating]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+    node.querySelector('#fbHide').onclick=()=>node.remove();
+    node.querySelector('#fbSend').onclick=async()=>{const msg=node.querySelector('#fbMsg');msg.innerHTML='';const whatHit=node.querySelector('#fbHit').value.trim(),whatFeltOff=node.querySelector('#fbOff').value.trim(),changeRequest=node.querySelector('#fbChange').value.trim();if(!rating)return showError(msg,'Hit me with a 1–5 first.');if(!whatHit&&!whatFeltOff&&!changeRequest)return showError(msg,'Give me at least one thought.');try{await post(PARTICIPANT_FN,{op:'save_feedback',token:appState.token,pin:appState.pin||sessionStorage.getItem('sc_pin')||'',checkpoint,rating,whatHit,whatFeltOff,changeRequest});node.innerHTML='<div class="success"><strong>Got it. Appreciate you keeping it real.</strong><br>This feedback goes to improving the pilot. Your private reflections stayed private.</div>';toast('Feedback sent ✓');}catch(e){showError(msg,e.message)}};
+  }
+
   function addParticipantReceipts(){
-    const root=document.querySelector('#participantView');if(!root||document.getElementById('pilotReceipts'))return;
-    let st;try{st=appState.state||{};}catch{return;}
-    const j=st.journey||{},actions=st.actions||[],steps=st.steps||[],scores=st.scores||[];
-    if(!appState.participant)return;
-    const completed=Number(j.total_completed||0),moves=actions.filter(a=>a.status==='done'||a.status==='partly').length,notYet=actions.filter(a=>a.status==='not_yet').length,current=Math.min(Number(j.current_step||1),51),best=biggestScoreMove(scores);
-    const node=document.createElement('div');node.className='panel';node.id='pilotReceipts';
-    node.innerHTML='<h2>Your receipts</h2><p class="muted">Not streaks. Not perfection. Just proof you been doing the work.</p>'+
-      '<div class="stat-grid" style="margin-top:14px"><div class="stat"><small>Steps finished</small><strong>'+completed+'</strong></div><div class="stat"><small>Moves made</small><strong>'+moves+'</strong></div><div class="stat"><small>Still open</small><strong>'+notYet+'</strong></div><div class="stat"><small>Current focus</small><strong style="font-size:20px">'+esc(levelName(current))+'</strong></div></div>'+
-      '<div class="statusbox"><strong>Right now:</strong> '+esc(stepLabel(current))+'. '+(best&&best.diff!==0?('<br><strong>Biggest Life Score movement so far:</strong> '+esc(labels[best.key]||best.key)+' '+(best.diff>0?'+':'')+best.diff+'.'):'Your score changes will show here once you finish WAKE UP.')+'</div>'+
-      '<div class="coachline">You do not lose these receipts because you took a break. Finished is finished.</div>';
-    root.appendChild(node);
+    const root=document.querySelector('#participantView');if(!root||document.getElementById('pilotReceipts'))return;let st;try{st=appState.state||{};}catch{return;}if(!appState.participant)return;
+    const j=st.journey||{},actions=st.actions||[],scores=st.scores||[],completed=Number(j.total_completed||0),moves=actions.filter(a=>a.status==='done'||a.status==='partly').length,notYet=actions.filter(a=>a.status==='not_yet').length,current=Math.min(Number(j.current_step||1),51),best=biggestScoreMove(scores);
+    const node=document.createElement('div');node.className='panel';node.id='pilotReceipts';node.innerHTML='<h2>Your receipts</h2><p class="muted">Not streaks. Not perfection. Just proof you been doing the work.</p><div class="stat-grid" style="margin-top:14px"><div class="stat"><small>Steps finished</small><strong>'+completed+'</strong></div><div class="stat"><small>Moves made</small><strong>'+moves+'</strong></div><div class="stat"><small>Still open</small><strong>'+notYet+'</strong></div><div class="stat"><small>Current focus</small><strong style="font-size:20px">'+esc(levelName(current))+'</strong></div></div><div class="statusbox"><strong>Right now:</strong> '+esc(stepLabel(current))+'. '+(best&&best.diff!==0?('<br><strong>Biggest Life Score movement:</strong> '+esc(labels[best.key]||best.key)+' '+(best.diff>0?'+':'')+best.diff+'.'):'Your score changes will show here once you finish WAKE UP.')+'</div><div class="coachline">You do not lose these receipts because you took a break. Finished is finished.</div><div class="actions"><button class="btn secondary" id="openPilotFeedback" type="button">Give pilot feedback</button></div>';
+    root.appendChild(node);node.querySelector('#openPilotFeedback').onclick=()=>{feedbackForm(completed>=7?'after_wakeup':'general');const f=document.getElementById('pilotFeedback');if(f)f.scrollIntoView({behavior:'smooth',block:'start'});};
   }
 
   function participantDetail(p){
-    const d=appState.creatorData||{},j=(d.journeys||[]).find(x=>x.participant_id===p.id)||{},acts=(d.actions||[]).filter(x=>x.participant_id===p.id),scores=(d.scores||[]).filter(x=>x.participant_id===p.id),shared=(d.sharedReflections||[]).filter(x=>x.participant_id===p.id),best=biggestScoreMove(scores),current=Math.min(Number(j.current_step||1),51);
-    const node=document.querySelector('#creatorModal');if(!node)return;
-    const done=acts.filter(a=>a.status==='done').length,partly=acts.filter(a=>a.status==='partly').length,notYet=acts.filter(a=>a.status==='not_yet').length;
-    node.innerHTML='<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="tag">Participant progress</div><h2>'+esc(p.display_name)+'</h2><p class="muted">'+esc(p.pace||'my-own')+' · private writing stays private</p></div><button class="btn secondary" id="closeParticipantDetail">Close</button></div>'+
-      '<div class="stat-grid"><div class="stat"><small>Completed</small><strong>'+Number(j.total_completed||0)+'/51</strong></div><div class="stat"><small>Current level</small><strong style="font-size:20px">'+esc(levelName(current))+'</strong></div><div class="stat"><small>Moves done</small><strong>'+done+'</strong></div><div class="stat"><small>Not yet</small><strong>'+notYet+'</strong></div></div>'+
-      '<div class="statusbox"><strong>Current step:</strong> '+esc(stepLabel(current))+'.'+(best?('<br><strong>Biggest Life Score movement:</strong> '+esc(labels[best.key]||best.key)+' '+(best.diff>0?'+':'')+best.diff+'.'):'')+'<br><strong>Partly completed moves:</strong> '+partly+'.</div>'+
-      (shared.length?'<h3>Shared on purpose</h3>'+shared.map(r=>'<div class="shared-reflection"><small>Step '+r.step_number+' · '+esc(r.prompt_key)+'</small><p>'+esc(r.body)+'</p></div>').join(''):'<div class="privacy">🔒 No reflection text is visible here. That is the point.</div>')+'</div>';
-    document.querySelector('#closeParticipantDetail').onclick=()=>node.innerHTML='';node.scrollIntoView({behavior:'smooth',block:'start'});
+    const d=appState.creatorData||{},j=(d.journeys||[]).find(x=>x.participant_id===p.id)||{},acts=(d.actions||[]).filter(x=>x.participant_id===p.id),scores=(d.scores||[]).filter(x=>x.participant_id===p.id),shared=(d.sharedReflections||[]).filter(x=>x.participant_id===p.id),feedback=(d.feedback||[]).filter(x=>x.participant_id===p.id),events=(d.events||[]).filter(x=>x.participant_id===p.id),best=biggestScoreMove(scores),current=Math.min(Number(j.current_step||1),51);
+    const node=document.querySelector('#creatorModal');if(!node)return;const done=acts.filter(a=>a.status==='done').length,partly=acts.filter(a=>a.status==='partly').length,notYet=acts.filter(a=>a.status==='not_yet').length,returns=events.filter(e=>e.event_type==='return_after_break').length;
+    node.innerHTML='<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="tag">Participant progress</div><h2>'+esc(p.display_name)+'</h2><p class="muted">'+esc(p.pace||'my-own')+' · private writing stays private</p></div><button class="btn secondary" id="closeParticipantDetail">Close</button></div><div class="stat-grid"><div class="stat"><small>Completed</small><strong>'+Number(j.total_completed||0)+'/51</strong></div><div class="stat"><small>Current level</small><strong style="font-size:20px">'+esc(levelName(current))+'</strong></div><div class="stat"><small>Moves done</small><strong>'+done+'</strong></div><div class="stat"><small>Came back</small><strong>'+returns+'×</strong></div></div><div class="statusbox"><strong>Current step:</strong> '+esc(stepLabel(current))+'.'+(best?('<br><strong>Biggest Life Score movement:</strong> '+esc(labels[best.key]||best.key)+' '+(best.diff>0?'+':'')+best.diff+'.'):'')+'<br><strong>Partly completed moves:</strong> '+partly+'. <strong>Not yet:</strong> '+notYet+'.</div>'+(feedback.length?'<h3>Pilot feedback they chose to send</h3>'+feedback.map(f=>'<div class="shared-reflection"><small>'+esc(f.checkpoint)+' · '+f.rating+'/5 · '+new Date(f.created_at).toLocaleDateString()+'</small>'+(f.what_hit?'<p><strong>What hit:</strong> '+esc(f.what_hit)+'</p>':'')+(f.what_felt_off?'<p><strong>What felt off:</strong> '+esc(f.what_felt_off)+'</p>':'')+(f.change_request?'<p><strong>Would change:</strong> '+esc(f.change_request)+'</p>':'')+'</div>').join(''):'')+(shared.length?'<h3>Shared reflections</h3>'+shared.map(r=>'<div class="shared-reflection"><small>Step '+r.step_number+' · '+esc(r.prompt_key)+'</small><p>'+esc(r.body)+'</p></div>').join(''):'<div class="privacy">🔒 No private reflection text is visible here. That is the point.</div>')+'</div>';
+    node.querySelector('#closeParticipantDetail').onclick=()=>node.innerHTML='';node.scrollIntoView({behavior:'smooth',block:'start'});
   }
 
   function addCreatorInsights(){
-    const root=document.querySelector('#creatorView');if(!root||document.getElementById('creatorInsights'))return;
-    const d=appState.creatorData||{},acts=d.actions||[],steps=d.steps||[],ps=d.participants||[];
-    const openCounts={};steps.filter(s=>s.status==='in_progress').forEach(s=>openCounts[s.step_number]=(openCounts[s.step_number]||0)+1);
-    const stuckEntry=Object.entries(openCounts).sort((a,b)=>b[1]-a[1])[0];
-    const doneByStep={};acts.filter(a=>a.status==='done').forEach(a=>doneByStep[a.step_number]=(doneByStep[a.step_number]||0)+1);
-    const strongEntry=Object.entries(doneByStep).sort((a,b)=>b[1]-a[1])[0];
-    const notYet=acts.filter(a=>a.status==='not_yet').length;
-    const panel=document.createElement('div');panel.className='panel';panel.id='creatorInsights';
-    panel.innerHTML='<h2>What I am noticing</h2><p class="muted">Program signals only — no private journal mining.</p><div class="two-col">'+
-      '<div class="statusbox"><strong>Most common pause point</strong><br>'+(stuckEntry?esc(stepLabel(Number(stuckEntry[0])))+' · '+stuckEntry[1]+' currently open':'Need a few testers first.')+'</div>'+
-      '<div class="statusbox"><strong>Strongest action step</strong><br>'+(strongEntry?esc(stepLabel(Number(strongEntry[0])))+' · '+strongEntry[1]+' done receipts':'Need a few action receipts first.')+'</div></div>'+
-      '<div class="coachline">'+notYet+' “not yet” receipts across '+ps.length+' participant'+(ps.length===1?'':'s')+'. Those are not failures — they tell us where the coaching may need to get better.</div>';
-    root.appendChild(panel);
+    const root=document.querySelector('#creatorView');if(!root||document.getElementById('creatorInsights'))return;const d=appState.creatorData||{},acts=d.actions||[],steps=d.steps||[],ps=d.participants||[],feedback=d.feedback||[],events=d.events||[];
+    const openCounts={};steps.filter(s=>s.status==='in_progress').forEach(s=>openCounts[s.step_number]=(openCounts[s.step_number]||0)+1);const stuckEntry=Object.entries(openCounts).sort((a,b)=>b[1]-a[1])[0];const doneByStep={};acts.filter(a=>a.status==='done').forEach(a=>doneByStep[a.step_number]=(doneByStep[a.step_number]||0)+1);const strongEntry=Object.entries(doneByStep).sort((a,b)=>b[1]-a[1])[0],notYet=acts.filter(a=>a.status==='not_yet').length,returns=events.filter(e=>e.event_type==='return_after_break').length,avg=feedback.length?(feedback.reduce((a,f)=>a+Number(f.rating||0),0)/feedback.length).toFixed(1):'—';
+    const panel=document.createElement('div');panel.className='panel';panel.id='creatorInsights';panel.innerHTML='<h2>What I am noticing</h2><p class="muted">Program signals and feedback people deliberately sent — no private journal mining.</p><div class="stat-grid"><div class="stat"><small>Feedback rating</small><strong>'+avg+(feedback.length?'/5':'')+'</strong></div><div class="stat"><small>Came back after break</small><strong>'+returns+'</strong></div><div class="stat"><small>Not yet receipts</small><strong>'+notYet+'</strong></div><div class="stat"><small>Feedback notes</small><strong>'+feedback.length+'</strong></div></div><div class="two-col"><div class="statusbox"><strong>Most common pause point</strong><br>'+(stuckEntry?esc(stepLabel(Number(stuckEntry[0])))+' · '+stuckEntry[1]+' currently open':'Need a few testers first.')+'</div><div class="statusbox"><strong>Strongest action step</strong><br>'+(strongEntry?esc(stepLabel(Number(strongEntry[0])))+' · '+strongEntry[1]+' done receipts':'Need a few action receipts first.')+'</div></div><div class="coachline">People coming back after a break is a win here. This program is built to reward returning, not punish disappearing.</div>'+(feedback.length?'<h3>Latest pilot feedback</h3>'+feedback.slice(0,5).map(f=>{const p=ps.find(x=>x.id===f.participant_id);return '<div class="shared-reflection"><small>'+esc(p?.display_name||'Participant')+' · '+f.rating+'/5 · '+esc(f.checkpoint)+'</small>'+(f.what_hit?'<p><strong>Hit:</strong> '+esc(f.what_hit)+'</p>':'')+(f.what_felt_off?'<p><strong>Off:</strong> '+esc(f.what_felt_off)+'</p>':'')+(f.change_request?'<p><strong>Change:</strong> '+esc(f.change_request)+'</p>':'')+'</div>';}).join(''):'');root.appendChild(panel);
     const rows=[...root.querySelectorAll('.person')];rows.forEach((row,i)=>{const p=ps[i];if(!p)return;row.style.cursor='pointer';row.title='Open progress details';row.tabIndex=0;row.onclick=()=>participantDetail(p);row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();participantDetail(p)}};});
   }
 
   try{
-    const originalHome=renderParticipantHome;
-    renderParticipantHome=function(){originalHome();addParticipantReceipts();restoreDrafts(document);};
-    const originalCreator=renderCreatorDashboard;
-    renderCreatorDashboard=function(){originalCreator();addCreatorInsights();};
+    const originalHome=renderParticipantHome;renderParticipantHome=function(){originalHome();addParticipantReceipts();restoreDrafts(document);};
+    const originalCreator=renderCreatorDashboard;renderCreatorDashboard=function(){originalCreator();addCreatorInsights();};
+    const originalWakeComplete=renderWakeUpComplete;renderWakeUpComplete=function(){originalWakeComplete.apply(this,arguments);feedbackForm('after_wakeup');};
   }catch{}
 
   document.addEventListener('input',e=>saveDraft(e.target),true);
-  const observer=new MutationObserver(records=>{
-    for(const r of records){for(const n of r.addedNodes){if(n.nodeType===1)restoreDrafts(n)}}
-  });
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  setTimeout(()=>restoreDrafts(document),80);
+  const observer=new MutationObserver(records=>{for(const r of records){for(const n of r.addedNodes){if(n.nodeType===1)restoreDrafts(n)}}});observer.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>restoreDrafts(document),80);
 
-  setTimeout(async()=>{
-    try{
-      if(!appState.token||appState.participant)return;
-      const saved=sessionStorage.getItem('sc_pin')||'';
-      if(!saved)return;
-      const data=await post(PARTICIPANT_FN,{op:'login',token:appState.token,pin:saved});
-      appState.pin=saved;appState.participant=data.participant;appState.state=data.state;
-      renderParticipantHome();
-      toast('Picked up where you left off ✓');
-    }catch{}
-  },120);
+  setTimeout(async()=>{try{if(!appState.token||appState.participant)return;const saved=sessionStorage.getItem('sc_pin')||'';if(!saved)return;const data=await post(PARTICIPANT_FN,{op:'login',token:appState.token,pin:saved});appState.pin=saved;appState.participant=data.participant;appState.state=data.state;renderParticipantHome();toast('Picked up where you left off ✓');}catch{}},120);
 })();
 <\/script>`;
   html=html.replace('</body>',enhancement+'</body>');
@@ -181,37 +117,13 @@ function patchPilot(source){
 }
 
 async function getPilotSource(){
-  try{
-    const r=await fetch(SOURCE,{cache:'no-store'});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const html=await r.text();
-    try{localStorage.setItem(CACHE_KEY,html);}catch{}
-    return {html,offline:false};
-  }catch(e){
-    let cached='';try{cached=localStorage.getItem(CACHE_KEY)||'';}catch{}
-    if(cached)return {html:cached,offline:true};
-    throw e;
-  }
+  try{const r=await fetch(SOURCE,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const html=await r.text();try{localStorage.setItem(CACHE_KEY,html);}catch{}return {html,offline:false};}
+  catch(e){let cached='';try{cached=localStorage.getItem(CACHE_KEY)||'';}catch{}if(cached)return {html:cached,offline:true};throw e;}
 }
-
-async function boot(){
-  retry.hidden=true;status.textContent='Loading your pilot…';
-  try{
-    const loaded=await getPilotSource();
-    frame.srcdoc=patchPilot(loaded.html);
-    frame.hidden=false;loading.style.display='none';
-  }catch(e){
-    status.textContent='Couldn’t load the pilot right now. Tap below and I’ll try it again.';retry.hidden=false;
-  }
-}
+async function boot(){retry.hidden=true;status.textContent='Loading your pilot…';try{const loaded=await getPilotSource();frame.srcdoc=patchPilot(loaded.html);frame.hidden=false;loading.style.display='none';}catch(e){status.textContent='Couldn’t load the pilot right now. Tap below and I’ll try it again.';retry.hidden=false;}}
 retry.onclick=boot;boot();
 
-let installPrompt=null;
-const installBar=document.getElementById('installBar'),installBtn=document.getElementById('installBtn');
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installBar.style.display='flex'});
-installBtn.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();try{await installPrompt.userChoice}catch{}installPrompt=null;installBar.style.display='none'});
-window.addEventListener('appinstalled',()=>{installPrompt=null;installBar.style.display='none'});
-
+let installPrompt=null;const installBar=document.getElementById('installBar'),installBtn=document.getElementById('installBtn');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installBar.style.display='flex'});installBtn.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();try{await installPrompt.userChoice}catch{}installPrompt=null;installBar.style.display='none'});window.addEventListener('appinstalled',()=>{installPrompt=null;installBar.style.display='none'});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 </script>
 </body>
