@@ -23,6 +23,7 @@ jobs:
         run: |
           node --check second-chance/app.js
           node --check second-chance/sw.js
+          node --check second-chance/preview.js
       - name: Public account app contract
         run: |
           node <<'NODE'
@@ -37,4 +38,15 @@ jobs:
           if(!js.includes("n>=51")&&!js.includes("x.n>=51")) throw new Error('Final completion path missing');
           if(manifest.display!=='standalone'||manifest.start_url!=='./') throw new Error('PWA manifest wrong');
           console.log('PASS: public signup/login, account backend calls, journey engine, cover, and PWA wiring present');
+          NODE
+      - name: Full preview contract
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('second-chance/preview.html','utf8');
+          const js=fs.readFileSync('second-chance/preview.js','utf8');
+          for(const s of ['Second Chance Preview','READ-ONLY','Graduate certificate','preview.js']) if(!html.includes(s)) throw new Error('Preview shell missing '+s);
+          for(const s of ['for(let i=1;i<=51;i++)','reward(7)','reward(21)','reward(51)','function blueprint','function certificate','STEPS[step-1]']) if(!js.includes(s)) throw new Error('Preview missing '+s);
+          if(/fetch\s*\(/.test(js)) throw new Error('Preview must remain read-only with no network writes');
+          console.log('PASS: full read-only preview includes all 51 steps, level rewards, Blueprint, and certificate');
           NODE
