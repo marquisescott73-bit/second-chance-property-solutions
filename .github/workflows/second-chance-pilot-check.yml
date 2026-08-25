@@ -45,9 +45,12 @@ jobs:
           });
           if(!steps[6].reward||!steps[20].reward||!steps[50].reward) throw new Error('Missing level reward');
           if(steps[6].score!=='after_wakeup'||steps[20].score!=='after_lockin'||steps[50].score!=='final') throw new Error('Score checkpoints are wrong');
+          const shell=fs.readFileSync(`${dir}/index.html`,'utf8');
+          if(!shell.includes("localStorage.setItem('sc_invite_token'")) throw new Error('Installed app does not persist invite doorway');
+          if(!shell.includes("localStorage.getItem('sc_invite_token')")) throw new Error('Installed app does not restore invite doorway');
           const html=fs.readFileSync(`${dir}/app.html`,'utf8');
           for(const ref of ['./app.css','./steps.js','./app.js']) if(!html.includes(ref)) throw new Error(`app.html missing ${ref}`);
           const manifest=JSON.parse(fs.readFileSync(`${dir}/manifest.webmanifest`,'utf8'));
           if(manifest.display!=='standalone') throw new Error('PWA must use standalone display');
-          console.log('PASS: 51 steps, 3 levels, rewards, score checkpoints, assets, manifest');
+          console.log('PASS: 51 steps, 3 levels, rewards, checkpoints, app assets, and installed resume');
           NODE
