@@ -19,7 +19,6 @@
 #boot .debug{margin-top:10px;font-size:11px;line-height:1.4;color:#8a6658;word-break:break-word}
 @keyframes bootpulse{to{opacity:.25;transform:scale(.7)}}
 #boot .retry{display:none;margin:16px auto 0;border:0;background:#c87559;color:#fff;border-radius:14px;padding:11px 16px;font-weight:800}
-
 #opening{position:fixed;inset:0;z-index:5000;overflow:auto;background:linear-gradient(180deg,#fbf5eb 0%,#f3e5d6 100%);color:#2f3b35;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(18px,env(safe-area-inset-top)) 14px max(22px,env(safe-area-inset-bottom))}
 #opening[hidden]{display:none!important}
 .opening-inner{width:min(520px,100%);margin:0 auto;min-height:100%;display:flex;flex-direction:column;align-items:center}
@@ -36,117 +35,28 @@
 .opening-privacy{margin:13px 0 0;font-size:12px;color:#6f6c65;text-align:center;line-height:1.45}
 .opening-hint{min-height:18px;margin-top:9px;font-size:12px;line-height:1.45;color:#965742;text-align:center;max-width:410px}
 .opening-creator{margin:10px 0 4px;border:0;background:transparent;color:#7d7972;font-size:11px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-
 #installPrompt{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:80;display:none;align-items:center;gap:8px;background:#2f3b35;color:#fffdfa;border-radius:999px;padding:7px 7px 7px 12px;box-shadow:0 10px 35px rgba(47,59,53,.22);font-size:12px;font-weight:750}
 #installPrompt button{border:0;background:#fffdfa;color:#2f3b35;border-radius:999px;padding:8px 11px;font-weight:800}
-@media(max-width:520px){
-  #installPrompt{left:12px;right:12px;justify-content:space-between}
-  #opening{padding-left:11px;padding-right:11px}
-  .opening-brand{font-size:37px}
-  .opening-headline{font-size:28px}
-  .opening-cover{max-height:55vh}
-}
+@media(max-width:520px){#installPrompt{left:12px;right:12px;justify-content:space-between}#opening{padding-left:11px;padding-right:11px}.opening-brand{font-size:37px}.opening-headline{font-size:28px}.opening-cover{max-height:55vh}}
 </style>
 </head>
 <body>
 <div id="boot"><div class="bootcard"><h1>Second Chance</h1><p id="bootText">Loading your journey…</p><div class="bootdot" id="bootDot"></div><div class="debug" id="bootDebug"></div><button class="retry" id="bootRetry" type="button">Reload app</button></div></div>
-
-<section id="opening" aria-label="Second Chance opening screen">
-  <div class="opening-inner">
-    <div class="opening-mark" aria-hidden="true">↗</div>
-    <div class="opening-brand">Second Chance</div>
-    <div class="opening-kicker">Journal · Reflect · Grow</div>
-    <div class="opening-headline">Your next chapter <em>starts here.</em></div>
-    <img class="opening-cover" src="./opening-cover.svg?v=20260825-1342" alt="Cream Second Chance journal cover reading What if your second chance changed everything?">
-    <div class="opening-actions">
-      <button class="opening-btn primary" id="openingStart" type="button">Start My Second Chance →</button>
-      <button class="opening-btn secondary" id="openingAccess" type="button">I Already Have Access →</button>
-    </div>
-    <div class="opening-privacy">♢ Your journey is private and secure.</div>
-    <div class="opening-hint" id="openingHint" aria-live="polite"></div>
-    <button class="opening-creator" id="openingCreator" type="button">Creator access</button>
-  </div>
-</section>
-
-<div id="app"></div>
-<div id="toast" class="toast" aria-live="polite"></div>
-<div id="installPrompt"><span>Want this on your phone?</span><button id="installBtn" type="button">Add app</button></div>
+<section id="opening" aria-label="Second Chance opening screen"><div class="opening-inner"><div class="opening-mark" aria-hidden="true">↗</div><div class="opening-brand">Second Chance</div><div class="opening-kicker">Journal · Reflect · Grow</div><div class="opening-headline">Your next chapter <em>starts here.</em></div><img class="opening-cover" src="./opening-cover.svg?v=20260825-1342" alt="Cream Second Chance journal cover reading What if your second chance changed everything?"><div class="opening-actions"><button class="opening-btn primary" id="openingStart" type="button">Start My Second Chance →</button><button class="opening-btn secondary" id="openingAccess" type="button">I Already Have Access →</button></div><div class="opening-privacy">♢ Your journey is private and secure.</div><div class="opening-hint" id="openingHint" aria-live="polite"></div><button class="opening-creator" id="openingCreator" type="button">Creator access</button></div></section>
+<div id="app"></div><div id="toast" class="toast" aria-live="polite"></div><div id="installPrompt"><span>Want this on your phone?</span><button id="installBtn" type="button">Add app</button></div>
 <script>
 (function(){
-  try{window.sessionStorage.getItem('__sc_probe__')}catch(storageError){
-    try{
-      const memory={};
-      Object.defineProperty(window,'sessionStorage',{configurable:true,value:{
-        getItem:k=>Object.prototype.hasOwnProperty.call(memory,k)?memory[k]:null,
-        setItem:(k,v)=>{memory[k]=String(v)},removeItem:k=>{delete memory[k]},
-        clear:()=>{for(const k of Object.keys(memory))delete memory[k]}
-      }});
-    }catch(_ignored){}
-  }
-  const params=new URLSearchParams(location.search),incoming=params.get('invite');
-  if(incoming){try{localStorage.setItem('sc_invite_token',incoming)}catch{}}
-  if(!params.get('creator')&&!incoming){
-    let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}
-    if(saved)history.replaceState(null,'',location.pathname+'?invite='+encodeURIComponent(saved));
-  }
-
-  const opening=document.getElementById('opening');
-  if(params.get('creator')==='1')opening.hidden=true;
-  const hasDoorway=()=>{
-    const now=new URLSearchParams(location.search);
-    if(now.get('invite'))return true;
-    try{return !!localStorage.getItem('sc_invite_token')}catch{return false}
-  };
-  const enterJourney=()=>{
-    if(hasDoorway()){
-      opening.hidden=true;
-      window.scrollTo(0,0);
-      return;
-    }
-    document.getElementById('openingHint').textContent='This pilot is invite-only right now. Open the personal Second Chance link you were sent, then tap this button.';
-  };
-  document.getElementById('openingStart').addEventListener('click',enterJourney);
-  document.getElementById('openingAccess').addEventListener('click',enterJourney);
-  document.getElementById('openingCreator').addEventListener('click',()=>{location.href=location.pathname+'?creator=1'});
-
-  window.__scBootError='';
-  window.addEventListener('error',e=>{
-    const where=e.filename?(' · '+e.filename.split('/').pop()+':'+(e.lineno||'?')):'';
-    window.__scBootError=(e.message||'A startup resource failed')+where;
-  },true);
-  window.addEventListener('unhandledrejection',e=>{window.__scBootError=e.reason?.message||String(e.reason||'The app hit a startup error.')});
-  window.__secondChanceBootCheck=()=>{
-    const boot=document.getElementById('boot'),app=document.getElementById('app'),text=document.getElementById('bootText'),dot=document.getElementById('bootDot'),retry=document.getElementById('bootRetry'),debug=document.getElementById('bootDebug');
-    setTimeout(()=>{
-      if(app&&app.innerHTML.trim()){boot.style.display='none';return;}
-      text.textContent='Second Chance hit a startup problem. Tap reload and I’ll try again.';
-      debug.textContent=window.__scBootError?('Error: '+window.__scBootError):'Error: app did not render.';
-      dot.style.display='none';retry.style.display='inline-block';retry.onclick=()=>location.reload();
-    },1200);
-  };
+  try{window.sessionStorage.getItem('__sc_probe__')}catch(storageError){try{const memory={};Object.defineProperty(window,'sessionStorage',{configurable:true,value:{getItem:k=>Object.prototype.hasOwnProperty.call(memory,k)?memory[k]:null,setItem:(k,v)=>{memory[k]=String(v)},removeItem:k=>{delete memory[k]},clear:()=>{for(const k of Object.keys(memory))delete memory[k]}}})}catch(_ignored){}}
+  const params=new URLSearchParams(location.search),incoming=params.get('invite');if(incoming){try{localStorage.setItem('sc_invite_token',incoming)}catch{}}if(!params.get('creator')&&!incoming){let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}if(saved)history.replaceState(null,'',location.pathname+'?invite='+encodeURIComponent(saved))}
+  const opening=document.getElementById('opening');if(params.get('creator')==='1')opening.hidden=true;const hasDoorway=()=>{const now=new URLSearchParams(location.search);if(now.get('invite'))return true;try{return !!localStorage.getItem('sc_invite_token')}catch{return false}};const enterJourney=()=>{if(hasDoorway()){opening.hidden=true;window.scrollTo(0,0);return}document.getElementById('openingHint').textContent='This pilot is invite-only right now. Open the personal Second Chance link you were sent, then tap this button.'};document.getElementById('openingStart').addEventListener('click',enterJourney);document.getElementById('openingAccess').addEventListener('click',enterJourney);document.getElementById('openingCreator').addEventListener('click',()=>{location.href=location.pathname+'?creator=1'});
+  window.__scBootError='';window.addEventListener('error',e=>{const where=e.filename?(' · '+e.filename.split('/').pop()+':'+(e.lineno||'?')):'';window.__scBootError=(e.message||'A startup resource failed')+where},true);window.addEventListener('unhandledrejection',e=>{window.__scBootError=e.reason?.message||String(e.reason||'The app hit a startup error.')});window.__secondChanceBootCheck=()=>{const boot=document.getElementById('boot'),app=document.getElementById('app'),text=document.getElementById('bootText'),dot=document.getElementById('bootDot'),retry=document.getElementById('bootRetry'),debug=document.getElementById('bootDebug');setTimeout(()=>{if(app&&app.innerHTML.trim()){boot.style.display='none';return}text.textContent='Second Chance hit a startup problem. Tap reload and I’ll try again.';debug.textContent=window.__scBootError?('Error: '+window.__scBootError):'Error: app did not render.';dot.style.display='none';retry.style.display='inline-block';retry.onclick=()=>location.reload()},1200)};
 })();
 </script>
 <script src="./steps.js?v=20260825-1342"></script>
 <script>
-(async function loadSecondChance(){
-  try{
-    const r=await fetch('./app.js?v=20260825-1342',{cache:'no-store'});
-    if(!r.ok)throw new Error('Could not load app.js ('+r.status+')');
-    const source=await r.text();
-    const runApp=new Function(source+'\n//# sourceURL=second-chance-runtime.js');
-    runApp();
-  }catch(e){
-    window.__scBootError=(e&&e.message?e.message:String(e));
-  }finally{
-    window.__secondChanceBootCheck?.();
-  }
-})();
-
-let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.getElementById('installBtn');
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});
-btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});
-window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260825-1342').catch(()=>{}));
+(async function loadSecondChance(){try{const r=await fetch('./app.js?v=20260825-1342',{cache:'no-store'});if(!r.ok)throw new Error('Could not load app.js ('+r.status+')');const source=await r.text();const runApp=new Function(source+'\n//# sourceURL=second-chance-runtime.js');runApp()}catch(e){window.__scBootError=(e&&e.message?e.message:String(e))}finally{window.__secondChanceBootCheck?.()}})();
+let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.getElementById('installBtn');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260825-1342').catch(()=>{}));
 </script>
+<script src="./chat-admin-launcher.js?v=chat-1"></script>
 </body>
 </html>
