@@ -1,0 +1,53 @@
+name: Second Chance Pilot QA
+
+on:
+  push:
+    branches: [main, second-chance-complete-build]
+    paths:
+      - 'second-chance-pilot/**'
+      - '.github/workflows/second-chance-pilot-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check second-chance-pilot/steps.js
+          node --check second-chance-pilot/app.js
+          node --check second-chance-pilot/sw.js
+      - name: Required app files and 51-step contract
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const vm=require('vm');
+          const dir='second-chance-pilot';
+          for(const f of ['index.html','app.html','app.css','app.js','steps.js','sw.js','manifest.webmanifest','icon.svg']) {
+            if(!fs.existsSync(`${dir}/${f}`)) throw new Error(`Missing ${f}`);
+          }
+          const code=fs.readFileSync(`${dir}/steps.js`,'utf8')+'\n;globalThis.__steps=STEPS;';
+          const box={}; vm.createContext(box); vm.runInContext(code,box);
+          const steps=box.__steps;
+          if(!Array.isArray(steps)||steps.length!==51) throw new Error(`Expected 51 steps; found ${steps?.length}`);
+          steps.forEach((s,i)=>{
+            if(s.n!==i+1) throw new Error(`Step numbering breaks at ${i+1}`);
+            const expected=i<7?1:i<21?2:3;
+            if(s.level!==expected) throw new Error(`Wrong level at step ${s.n}`);
+            if(!s.title||!s.talk||!s.prompt||!s.prompt2||!Array.isArray(s.actions)||s.actions.length<3) throw new Error(`Incomplete content at step ${s.n}`);
+          });
+          if(!steps[6].reward||!steps[20].reward||!steps[50].reward) throw new Error('Missing level reward');
+          if(steps[6].score!=='after_wakeup'||steps[20].score!=='after_lockin'||steps[50].score!=='final') throw new Error('Score checkpoints are wrong');
+          const html=fs.readFileSync(`${dir}/app.html`,'utf8');
+          for(const ref of ['./app.css','./steps.js','./app.js']) if(!html.includes(ref)) throw new Error(`app.html missing ${ref}`);
+          const manifest=JSON.parse(fs.readFileSync(`${dir}/manifest.webmanifest`,'utf8'));
+          if(manifest.display!=='standalone') throw new Error('PWA must use standalone display');
+          console.log('PASS: 51 steps, 3 levels, rewards, score checkpoints, assets, manifest');
+          NODE
