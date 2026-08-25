@@ -9,22 +9,55 @@
 <title>Second Chance</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./app.css">
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f7f3eb;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#2f3b35}#frame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f7f3eb}#loading{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#f7f3eb;z-index:8}.card{max-width:440px;background:#fffdfa;border:1px solid #d9d7cf;border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}.muted{color:#6d7872;line-height:1.55}.dot{width:12px;height:12px;border-radius:50%;background:#c87559;margin:18px auto;animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.25;transform:scale(.7)}}button{border:0;background:#c87559;color:white;border-radius:14px;padding:10px 14px;font-weight:800;cursor:pointer}#install{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:20;display:none;align-items:center;gap:8px;background:#2f3b35;color:#fffdfa;border-radius:999px;padding:7px 7px 7px 12px;box-shadow:0 10px 35px rgba(47,59,53,.22);font-size:12px;font-weight:750}#install button{background:#fffdfa;color:#2f3b35;border-radius:999px;font-size:12px}@media(max-width:520px){#install{left:12px;right:12px;justify-content:space-between}}
+#boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:#f7f3eb;color:#2f3b35;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
+#boot .bootcard{width:min(430px,100%);background:#fffdfa;border:1px solid #d9d7cf;border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}
+#boot h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}
+#boot p{color:#6d7872;line-height:1.55;margin:0}
+#boot .bootdot{width:12px;height:12px;border-radius:50%;background:#c87559;margin:18px auto;animation:bootpulse 1s infinite alternate}
+@keyframes bootpulse{to{opacity:.25;transform:scale(.7)}}
+#boot .retry{display:none;margin:16px auto 0;border:0;background:#c87559;color:#fff;border-radius:14px;padding:11px 16px;font-weight:800}
+#installPrompt{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:80;display:none;align-items:center;gap:8px;background:#2f3b35;color:#fffdfa;border-radius:999px;padding:7px 7px 7px 12px;box-shadow:0 10px 35px rgba(47,59,53,.22);font-size:12px;font-weight:750}
+#installPrompt button{border:0;background:#fffdfa;color:#2f3b35;border-radius:999px;padding:8px 11px;font-weight:800}
+@media(max-width:520px){#installPrompt{left:12px;right:12px;justify-content:space-between}}
 </style>
 </head>
 <body>
-<div id="loading"><div class="card"><h1>Second Chance</h1><div class="muted">Loading your journey…</div><div class="dot"></div></div></div>
-<iframe id="frame" title="Second Chance OS"></iframe>
-<div id="install"><span>Want this on your phone?</span><button id="installBtn">Add app</button></div>
+<div id="boot"><div class="bootcard"><h1>Second Chance</h1><p id="bootText">Loading your journey…</p><div class="bootdot" id="bootDot"></div><button class="retry" id="bootRetry" type="button">Reload app</button></div></div>
+<div id="app"></div>
+<div id="toast" class="toast" aria-live="polite"></div>
+<div id="installPrompt"><span>Want this on your phone?</span><button id="installBtn" type="button">Add app</button></div>
 <script>
-const frame=document.getElementById('frame'),loading=document.getElementById('loading');
-const params=new URLSearchParams(location.search),incomingInvite=params.get('invite');
-if(incomingInvite){try{localStorage.setItem('sc_invite_token',incomingInvite)}catch{}}
-let appSearch=location.search;
-if(!params.get('creator')&&!incomingInvite){let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}if(saved)appSearch='?invite='+encodeURIComponent(saved)}
-frame.src='./app.html'+appSearch;frame.addEventListener('load',()=>loading.style.display='none');setTimeout(()=>loading.style.display='none',8000);
-let promptEvent=null;const bar=document.getElementById('install'),btn=document.getElementById('installBtn');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;bar.style.display='flex'});btn.onclick=async()=>{if(!promptEvent)return;promptEvent.prompt();try{await promptEvent.userChoice}catch{}promptEvent=null;bar.style.display='none'};window.addEventListener('appinstalled',()=>bar.style.display='none');if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+(function(){
+  const params=new URLSearchParams(location.search),incoming=params.get('invite');
+  if(incoming){try{localStorage.setItem('sc_invite_token',incoming)}catch{}}
+  if(!params.get('creator')&&!incoming){
+    let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}
+    if(saved)history.replaceState(null,'',location.pathname+'?invite='+encodeURIComponent(saved));
+  }
+  let bootError='';
+  window.addEventListener('error',e=>{bootError=e.message||'The app hit a startup error.'});
+  window.addEventListener('unhandledrejection',e=>{bootError=e.reason?.message||String(e.reason||'The app hit a startup error.')});
+  window.__secondChanceBootCheck=()=>{
+    const boot=document.getElementById('boot'),app=document.getElementById('app'),text=document.getElementById('bootText'),dot=document.getElementById('bootDot'),retry=document.getElementById('bootRetry');
+    setTimeout(()=>{
+      if(app&&app.innerHTML.trim()){boot.style.display='none';return;}
+      text.textContent=bootError?'Second Chance hit a startup problem. Tap reload and I’ll try again.':'Second Chance didn’t finish loading. Tap reload and I’ll try again.';
+      dot.style.display='none';retry.style.display='inline-block';retry.onclick=()=>location.reload();
+    },900);
+  };
+})();
+</script>
+<script src="./steps.js"></script>
+<script src="./app.js"></script>
+<script>
+window.__secondChanceBootCheck?.();
+let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});
+btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});
+window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script>
 </body>
 </html>
