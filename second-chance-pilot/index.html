@@ -4,25 +4,157 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f7f3eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Second Chance — Pilot</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
 <style>
-html,body{margin:0;width:100%;height:100%;background:#f7f3eb;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#2f3b35}
+html,body{margin:0;width:100%;height:100%;background:#f7f3eb;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#2f3b35;overflow:hidden}
 #frame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f7f3eb}
-#loading{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#f7f3eb;z-index:2}
+#loading{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#f7f3eb;z-index:8}
 .card{max-width:460px;background:#fffdfa;border:1px solid #d9d7cf;border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}
 h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}.muted{color:#6d7872;line-height:1.55}.dot{width:12px;height:12px;border-radius:50%;background:#c87559;margin:18px auto;animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.25;transform:scale(.7)}}button{border:0;background:#c87559;color:white;border-radius:14px;padding:12px 17px;font-weight:800;font-size:16px;cursor:pointer}
+#installBar{position:fixed;right:14px;bottom:max(14px,env(safe-area-inset-bottom));z-index:20;display:none;align-items:center;gap:9px;background:#2f3b35;color:#fffdfa;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:7px 7px 7px 13px;box-shadow:0 10px 35px rgba(47,59,53,.22);font-size:12px;font-weight:750}
+#installBar button{background:#fffdfa;color:#2f3b35;border-radius:999px;padding:8px 12px;font-size:12px;min-height:34px}
+@media(max-width:520px){#installBar{left:12px;right:12px;justify-content:space-between}}
 </style>
 </head>
 <body>
 <div id="loading"><div class="card"><h1>Second Chance</h1><div class="muted" id="status">Loading your pilot…</div><div class="dot"></div><button id="retry" hidden>Try again</button></div></div>
 <iframe id="frame" title="Second Chance OS" hidden></iframe>
+<div id="installBar"><span>Want this to feel like an app?</span><button id="installBtn" type="button">Add to phone</button></div>
 <script>
 const SOURCE='https://raw.githubusercontent.com/marquisescott73-bit/second-chance-property-solutions/second-chance-growth-pilot/growth-pilot.html';
+const CACHE_KEY='second_chance_pilot_shell_v3';
 const loading=document.getElementById('loading'),status=document.getElementById('status'),retry=document.getElementById('retry'),frame=document.getElementById('frame');
-async function boot(){retry.hidden=true;status.textContent='Loading your pilot…';try{const r=await fetch(SOURCE,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const html=await r.text();frame.srcdoc=html;frame.hidden=false;loading.style.display='none';}catch(e){status.textContent='Couldn’t load the pilot right now. Tap below and I’ll try it again.';retry.hidden=false;}}
+
+function patchPilot(source){
+  let html=source;
+  html=html.replaceAll('new URLSearchParams(location.search)','new URLSearchParams(parent.location.search)');
+  html=html.replace("location.href=location.pathname","parent.location.href=parent.location.pathname");
+  html=html.replace("const url=location.origin+location.pathname+'?invite='","const url=parent.location.origin+parent.location.pathname+'?invite='");
+
+  const enhancement=`<script>
+(function(){
+  const timers=new Map();
+  let saveToast;
+
+  function currentStep(){
+    try{return Math.max(1,Math.min(51,(appState.selectedDay||0)+1));}catch{return 1;}
+  }
+  function draftable(el){
+    if(!el||!el.id)return false;
+    if(el.tagName==='TEXTAREA')return true;
+    if(el.tagName!=='INPUT')return false;
+    const type=(el.type||'text').toLowerCase();
+    return type==='text' && !/pin|password|email/i.test(el.id);
+  }
+  function toast(text){
+    if(!saveToast){
+      saveToast=document.createElement('div');
+      saveToast.setAttribute('aria-live','polite');
+      Object.assign(saveToast.style,{position:'fixed',right:'14px',bottom:'14px',zIndex:'9999',background:'#2f3b35',color:'#fffdfa',borderRadius:'999px',padding:'8px 12px',fontSize:'11px',fontWeight:'800',boxShadow:'0 8px 24px rgba(47,59,53,.18)',opacity:'0',transition:'opacity .2s ease',pointerEvents:'none'});
+      document.body.appendChild(saveToast);
+    }
+    saveToast.textContent=text;saveToast.style.opacity='1';
+    clearTimeout(saveToast._hide);saveToast._hide=setTimeout(()=>saveToast.style.opacity='0',1300);
+  }
+  function stateDraft(step,key){
+    try{return (appState.state?.drafts||[]).find(d=>d.step_number===step&&d.draft_key===key);}catch{return null;}
+  }
+  function restoreDrafts(root=document){
+    let drafts=[];try{drafts=appState.state?.drafts||[];}catch{return;}
+    if(!drafts.length)return;
+    const step=currentStep();
+    root.querySelectorAll('textarea[id],input[id]').forEach(el=>{
+      if(!draftable(el))return;
+      const d=drafts.find(x=>x.step_number===step&&x.draft_key===el.id);
+      if(!d||!d.body)return;
+      if((el.value||'').trim()===''){
+        el.value=d.body;
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+      }
+    });
+  }
+  function saveDraft(el){
+    if(!draftable(el))return;
+    let token='',pin='';try{token=appState.token||'';pin=appState.pin||sessionStorage.getItem('sc_pin')||'';}catch{}
+    if(!token||!pin)return;
+    const step=currentStep(),key=el.id,text=el.value||'';
+    clearTimeout(timers.get(key));
+    timers.set(key,setTimeout(async()=>{
+      try{
+        const result=await post(PARTICIPANT_FN,{op:'save_draft',token,pin,stepNumber:step,draftKey:key,text});
+        if(appState.state){
+          appState.state.drafts=appState.state.drafts||[];
+          const i=appState.state.drafts.findIndex(d=>d.step_number===step&&d.draft_key===key);
+          if(text.trim()){
+            const row={step_number:step,draft_key:key,body:text,updated_at:result.updated_at||new Date().toISOString()};
+            if(i>=0)appState.state.drafts[i]=row;else appState.state.drafts.push(row);
+          }else if(i>=0){appState.state.drafts.splice(i,1);}
+        }
+        toast('Saved privately ✓');
+      }catch{}
+    },850));
+  }
+
+  document.addEventListener('input',e=>saveDraft(e.target),true);
+  const observer=new MutationObserver(records=>{
+    for(const r of records){for(const n of r.addedNodes){if(n.nodeType===1)restoreDrafts(n)}}
+  });
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(()=>restoreDrafts(document),80);
+
+  setTimeout(async()=>{
+    try{
+      if(!appState.token||appState.participant)return;
+      const saved=sessionStorage.getItem('sc_pin')||'';
+      if(!saved)return;
+      const data=await post(PARTICIPANT_FN,{op:'login',token:appState.token,pin:saved});
+      appState.pin=saved;appState.participant=data.participant;appState.state=data.state;
+      renderParticipantHome();
+      toast('Picked up where you left off ✓');
+    }catch{}
+  },120);
+})();
+<\/script>`;
+  html=html.replace('</body>',enhancement+'</body>');
+  return html;
+}
+
+async function getPilotSource(){
+  try{
+    const r=await fetch(SOURCE,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const html=await r.text();
+    try{localStorage.setItem(CACHE_KEY,html);}catch{}
+    return {html,offline:false};
+  }catch(e){
+    let cached='';try{cached=localStorage.getItem(CACHE_KEY)||'';}catch{}
+    if(cached)return {html:cached,offline:true};
+    throw e;
+  }
+}
+
+async function boot(){
+  retry.hidden=true;status.textContent='Loading your pilot…';
+  try{
+    const loaded=await getPilotSource();
+    frame.srcdoc=patchPilot(loaded.html);
+    frame.hidden=false;loading.style.display='none';
+  }catch(e){
+    status.textContent='Couldn’t load the pilot right now. Tap below and I’ll try it again.';retry.hidden=false;
+  }
+}
 retry.onclick=boot;boot();
+
+let installPrompt=null;
+const installBar=document.getElementById('installBar'),installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installBar.style.display='flex'});
+installBtn.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();try{await installPrompt.userChoice}catch{}installPrompt=null;installBar.style.display='none'});
+window.addEventListener('appinstalled',()=>{installPrompt=null;installBar.style.display='none'});
+
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 </script>
 </body>
