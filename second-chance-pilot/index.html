@@ -18,7 +18,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f7f3eb;fon
 <iframe id="frame" title="Second Chance OS"></iframe>
 <div id="install"><span>Want this on your phone?</span><button id="installBtn">Add app</button></div>
 <script>
-const frame=document.getElementById('frame'),loading=document.getElementById('loading');frame.src='./app.html'+location.search;frame.addEventListener('load',()=>loading.style.display='none');setTimeout(()=>loading.style.display='none',8000);
+const frame=document.getElementById('frame'),loading=document.getElementById('loading');
+const params=new URLSearchParams(location.search),incomingInvite=params.get('invite');
+if(incomingInvite){try{localStorage.setItem('sc_invite_token',incomingInvite)}catch{}}
+let appSearch=location.search;
+if(!params.get('creator')&&!incomingInvite){let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}if(saved)appSearch='?invite='+encodeURIComponent(saved)}
+frame.src='./app.html'+appSearch;frame.addEventListener('load',()=>loading.style.display='none');setTimeout(()=>loading.style.display='none',8000);
 let promptEvent=null;const bar=document.getElementById('install'),btn=document.getElementById('installBtn');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;bar.style.display='flex'});btn.onclick=async()=>{if(!promptEvent)return;promptEvent.prompt();try{await promptEvent.userChoice}catch{}promptEvent=null;bar.style.display='none'};window.addEventListener('appinstalled',()=>bar.style.display='none');if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script>
 </body>
