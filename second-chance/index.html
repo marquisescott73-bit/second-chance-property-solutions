@@ -9,7 +9,7 @@
 <title>Second Chance</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="../second-chance-pilot/icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="../second-chance-pilot/app.css?v=public-3">
+<link rel="stylesheet" href="../second-chance-pilot/app.css?v=public-4">
 <style>
 :root{--cream:#f7f3eb;--paper:#fffdfa;--ink:#2f3b35;--muted:#6d7872;--terra:#c87559;--line:#d9d7cf;--sage:#dfe9df}
 html,body{min-height:100%;background:var(--cream)}
@@ -26,14 +26,15 @@ html,body{min-height:100%;background:var(--cream)}
 <body>
 <div id="boot"><div class="card"><h1>Second Chance</h1><p id="bootText">Opening your journey…</p><div class="dot"></div></div></div>
 <div id="app"></div><div id="toast" class="toast" aria-live="polite"></div>
-<script src="./recovery-pre.js?v=public-3"></script>
-<script src="../second-chance-pilot/steps.js?v=public-3"></script>
-<script src="./app.js?v=public-3"></script>
-<script src="./enhancements.js?v=public-3"></script>
-<script src="./chat-launcher.js?v=chat-1"></script>
+<script src="./recovery-pre.js?v=public-4"></script>
+<script src="../second-chance-pilot/steps.js?v=public-4"></script>
+<script src="./app.js?v=public-4"></script>
+<script src="./enhancements.js?v=public-4"></script>
+<script src="./beta-upgrades.js?v=public-4"></script>
+<script src="./chat-launcher.js?v=chat-2"></script>
 <script>
 setTimeout(()=>{const b=document.getElementById('boot');if(b)b.style.display='none'},650);
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=public-3').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=public-4').catch(()=>{}));
 </script>
 </body>
 </html>
