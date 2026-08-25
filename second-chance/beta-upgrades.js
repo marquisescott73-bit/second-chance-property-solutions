@@ -3,7 +3,7 @@
 const SB='https://pjskrjecyzoprpqhymbq.supabase.co',KEY='sb_publishable_PRyYNqhTAhk5sr3wKbIC0g_bYCLEhwd',SUPPORT=SB+'/functions/v1/sc-growth-support',TERMS='2026-08-25-beta1';
 const $=(s,r=document)=>r.querySelector(s),esc=(x='')=>String(x).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const get=k=>{try{return localStorage.getItem(k)||''}catch{return''}},set=(k,v)=>{try{localStorage.setItem(k,String(v))}catch{}};
-let legalAccepted=false,nudgeTimer=null,nudgeShown='';
+let legalAccepted=false,nudgeTimer=null,nudgeShown='',syncing=false,lastSync=0;
 
 const style=document.createElement('style');
 style.textContent=`
@@ -45,20 +45,24 @@ async function refreshAccess(){const r=refreshToken();if(!r)throw Error('Please 
 async function support(op,body={}){let tok=access();if(!tok)throw Error('Please sign in again.');let r=await nativeFetch(SUPPORT,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+tok},body:JSON.stringify({op,...body})});if(r.status===401&&refreshToken()){tok=await refreshAccess();r=await nativeFetch(SUPPORT,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+tok},body:JSON.stringify({op,...body})})}const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not save that reminder.');return d}
 function signedJourney(){const app=$('#app');return !!access()&&!!app&&!app.querySelector('.public-cover,.auth-wrap')&&!window.__SC_RECOVERY__}
 function labelFor(n){if(!n)return '🔔 Need a nudge?';const dt=new Date(n.due_at);return `🔔 Nudge ${dt.toLocaleDateString([], {month:'short',day:'numeric'})}`}
-async function syncNudge(){
-  const bar=$('.accountbar');if(!signedJourney()||!bar){$('#scNudgeBtn')?.remove();return}
-  let b=$('#scNudgeBtn');if(!b){b=document.createElement('button');b.id='scNudgeBtn';b.className='sc-nudge-btn';b.onclick=openNudge;bar.insertBefore(b,bar.querySelector('#logout'))}
-  try{const d=await support('nudge_get');b.textContent=labelFor(d.nudge);b.classList.toggle('active',!!d.nudge);if(d.nudge){scheduleNudge(d.nudge);if(d.due&&nudgeShown!==d.nudge.id){nudgeShown=d.nudge.id;showDue(d.nudge)}}}catch{b.textContent='🔔 Need a nudge?'}
+function ensureNudgeButton(){const bar=$('.accountbar');if(!signedJourney()||!bar){$('#scNudgeBtn')?.remove();return null}let b=$('#scNudgeBtn');if(!b){b=document.createElement('button');b.id='scNudgeBtn';b.className='sc-nudge-btn';b.textContent='🔔 Need a nudge?';b.onclick=openNudge;bar.insertBefore(b,bar.querySelector('#logout'))}return b}
+async function syncNudge(force=false){
+  const b=ensureNudgeButton();if(!b)return;
+  if(syncing||(!force&&Date.now()-lastSync<5000))return;
+  syncing=true;lastSync=Date.now();
+  try{const d=await support('nudge_get');b.textContent=labelFor(d.nudge);b.classList.toggle('active',!!d.nudge);if(d.nudge){scheduleNudge(d.nudge);if(d.due&&nudgeShown!==d.nudge.id){nudgeShown=d.nudge.id;showDue(d.nudge)}}}
+  catch{b.textContent='🔔 Need a nudge?'}
+  finally{syncing=false}
 }
 function closeModal(){document.getElementById('scNudgeModal')?.remove()}
 function modalShell(inner){closeModal();const m=document.createElement('div');m.id='scNudgeModal';m.className='sc-nudge-modal';m.innerHTML=`<section class="sc-nudge-card"><button class="sc-nudge-x" id="scNudgeClose" aria-label="Close">×</button>${inner}</section>`;document.body.appendChild(m);$('#scNudgeClose',m).onclick=closeModal;m.onclick=e=>{if(e.target===m)closeModal()};return m}
 function openNudge(){
   const m=modalShell(`<div class="brand-kicker">COME BACK WHEN YOU CAN</div><h2>Need a nudge?</h2><p>Pick when you want Second Chance to pull you back toward your next move. No streaks. No guilt.</p><div class="sc-nudge-choices"><button class="sc-nudge-main" data-p="tomorrow">Tomorrow</button><button class="sc-nudge-main" data-p="3_days">In 3 days</button><button class="sc-nudge-main" data-p="1_week">Next week</button><button class="sc-nudge-alt" id="scCancelNudge">Cancel current reminder</button></div><label class="sc-browser"><input id="scBrowserNudges" type="checkbox" ${get('sc_nudge_browser')==='1'?'checked':''}><span>Allow browser reminders on this device while Second Chance is open.</span></label><div class="sc-nudge-note">If the app is fully closed, web browsers may not deliver a reminder until you open Second Chance again.</div><div id="scNudgeMsg"></div>`);
   m.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>setNudge(b.dataset.p,m)));
-  $('#scCancelNudge',m).onclick=async()=>{try{await support('nudge_cancel');clearTimeout(nudgeTimer);nudgeTimer=null;$('#scNudgeMsg',m).innerHTML='<div class="public-success">Reminder cancelled.</div>';setTimeout(()=>{closeModal();syncNudge()},700)}catch(e){$('#scNudgeMsg',m).innerHTML='<div class="public-error">'+esc(e.message)+'</div>'}};
+  $('#scCancelNudge',m).onclick=async()=>{try{await support('nudge_cancel');clearTimeout(nudgeTimer);nudgeTimer=null;$('#scNudgeMsg',m).innerHTML='<div class="public-success">Reminder cancelled.</div>';setTimeout(()=>{closeModal();syncNudge(true)},700)}catch(e){$('#scNudgeMsg',m).innerHTML='<div class="public-error">'+esc(e.message)+'</div>'}};
   $('#scBrowserNudges',m).onchange=async e=>{if(e.target.checked){if('Notification'in window){const p=await Notification.requestPermission();set('sc_nudge_browser',p==='granted'?'1':'0');if(p!=='granted')e.target.checked=false}else e.target.checked=false}else set('sc_nudge_browser','0')};
 }
-async function setNudge(preset,m){try{const d=await support('nudge_set',{preset});$('#scNudgeMsg',m).innerHTML=`<div class="public-success">Got you. Nudge set for ${new Date(d.nudge.due_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}.</div>`;scheduleNudge(d.nudge);setTimeout(()=>{closeModal();syncNudge()},850)}catch(e){$('#scNudgeMsg',m).innerHTML='<div class="public-error">'+esc(e.message)+'</div>'}}
+async function setNudge(preset,m){try{const d=await support('nudge_set',{preset});$('#scNudgeMsg',m).innerHTML=`<div class="public-success">Got you. Nudge set for ${new Date(d.nudge.due_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}.</div>`;scheduleNudge(d.nudge);setTimeout(()=>{closeModal();syncNudge(true)},850)}catch(e){$('#scNudgeMsg',m).innerHTML='<div class="public-error">'+esc(e.message)+'</div>'}}
 function scheduleNudge(n){clearTimeout(nudgeTimer);const ms=new Date(n.due_at).getTime()-Date.now();if(ms<=0){setTimeout(()=>showDue(n),50);return}if(ms>2147483000)return;nudgeTimer=setTimeout(()=>{browserNudge();showDue(n)},ms)}
 function browserNudge(){if(get('sc_nudge_browser')!=='1'||!('Notification'in window)||Notification.permission!=='granted')return;try{new Notification('Second Chance',{body:'You asked for a nudge. Your next move is waiting — no guilt, just come back.',icon:'../second-chance-pilot/icon.svg'})}catch{}}
 function showDue(n){
@@ -66,9 +70,9 @@ function showDue(n){
   const m=modalShell(`<div class="brand-kicker">YOU ASKED ME TO PULL YOU BACK IN</div><h2>Aye. You coming back?</h2><div class="sc-due">No reset. No shame. You asked for this nudge, so here it is.</div><p>Your progress is right where you left it.</p><div class="sc-nudge-choices"><button class="sc-nudge-main" id="scOpenMove">Open my next move →</button><button class="sc-nudge-alt" id="scThreeMore">Give me 3 more days</button><button class="sc-nudge-alt" id="scDismissNudge">Dismiss</button></div><div id="scNudgeMsg"></div>`);
   $('#scOpenMove',m).onclick=async()=>{try{await support('nudge_ack',{nudgeId:n.id})}catch{}closeModal();const b=document.querySelector('[data-nav="today"]');if(b)b.click();else location.reload()};
   $('#scThreeMore',m).onclick=()=>setNudge('3_days',m);
-  $('#scDismissNudge',m).onclick=async()=>{try{await support('nudge_ack',{nudgeId:n.id})}catch{}closeModal();syncNudge()};
+  $('#scDismissNudge',m).onclick=async()=>{try{await support('nudge_ack',{nudgeId:n.id})}catch{}closeModal();syncNudge(true)};
 }
 
-function run(){injectLegal();syncNudge()}
-const mo=new MutationObserver(()=>queueMicrotask(run));mo.observe(document.body,{childList:true,subtree:true});run();setInterval(()=>{if(document.visibilityState==='visible')syncNudge()},60000);
+function run(){injectLegal();ensureNudgeButton()}
+const mo=new MutationObserver(()=>queueMicrotask(run));mo.observe(document.body,{childList:true,subtree:true});run();setTimeout(()=>syncNudge(true),900);setInterval(()=>{if(document.visibilityState==='visible')syncNudge()},60000);
 })();
