@@ -9,7 +9,7 @@
 <title>Second Chance</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./app.css?v=20260824-2103">
 <style>
 #boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:#f7f3eb;color:#2f3b35;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
 #boot .bootcard{width:min(430px,100%);background:#fffdfa;border:1px solid #d9d7cf;border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}
@@ -31,58 +31,63 @@
 <div id="installPrompt"><span>Want this on your phone?</span><button id="installBtn" type="button">Add app</button></div>
 <script>
 (function(){
-  /* Some Android/in-app browsers can expose sessionStorage but throw a SecurityError when it is read.
-     Give the pilot a temporary in-memory fallback instead of letting that kill the entire app. */
-  try{
-    window.sessionStorage.getItem('__sc_probe__');
-  }catch(storageError){
+  try{window.sessionStorage.getItem('__sc_probe__')}catch(storageError){
     try{
       const memory={};
-      Object.defineProperty(window,'sessionStorage',{
-        configurable:true,
-        value:{
-          getItem:k=>Object.prototype.hasOwnProperty.call(memory,k)?memory[k]:null,
-          setItem:(k,v)=>{memory[k]=String(v)},
-          removeItem:k=>{delete memory[k]},
-          clear:()=>{for(const k of Object.keys(memory))delete memory[k]}
-        }
-      });
+      Object.defineProperty(window,'sessionStorage',{configurable:true,value:{
+        getItem:k=>Object.prototype.hasOwnProperty.call(memory,k)?memory[k]:null,
+        setItem:(k,v)=>{memory[k]=String(v)},removeItem:k=>{delete memory[k]},
+        clear:()=>{for(const k of Object.keys(memory))delete memory[k]}
+      }});
     }catch(_ignored){}
   }
-
   const params=new URLSearchParams(location.search),incoming=params.get('invite');
   if(incoming){try{localStorage.setItem('sc_invite_token',incoming)}catch{}}
   if(!params.get('creator')&&!incoming){
     let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}
     if(saved)history.replaceState(null,'',location.pathname+'?invite='+encodeURIComponent(saved));
   }
-
-  let bootError='';
+  window.__scBootError='';
   window.addEventListener('error',e=>{
     const where=e.filename?(' · '+e.filename.split('/').pop()+':'+(e.lineno||'?')):'';
-    bootError=(e.message||'A startup resource failed')+where;
+    window.__scBootError=(e.message||'A startup resource failed')+where;
   },true);
-  window.addEventListener('unhandledrejection',e=>{bootError=e.reason?.message||String(e.reason||'The app hit a startup error.')});
+  window.addEventListener('unhandledrejection',e=>{window.__scBootError=e.reason?.message||String(e.reason||'The app hit a startup error.')});
   window.__secondChanceBootCheck=()=>{
     const boot=document.getElementById('boot'),app=document.getElementById('app'),text=document.getElementById('bootText'),dot=document.getElementById('bootDot'),retry=document.getElementById('bootRetry'),debug=document.getElementById('bootDebug');
     setTimeout(()=>{
       if(app&&app.innerHTML.trim()){boot.style.display='none';return;}
       text.textContent='Second Chance hit a startup problem. Tap reload and I’ll try again.';
-      debug.textContent=bootError?('Error: '+bootError):'Error: app did not render.';
+      debug.textContent=window.__scBootError?('Error: '+window.__scBootError):'Error: app did not render.';
       dot.style.display='none';retry.style.display='inline-block';retry.onclick=()=>location.reload();
-    },1000);
+    },1200);
   };
 })();
 </script>
-<script src="./steps.js?v=20260824-2051"></script>
-<script src="./app.js?v=20260824-2051"></script>
+<script src="./steps.js?v=20260824-2103"></script>
 <script>
-window.__secondChanceBootCheck?.();
+(async function loadSecondChance(){
+  try{
+    const r=await fetch('./app.js?v=20260824-2103',{cache:'no-store'});
+    if(!r.ok)throw new Error('Could not load app.js ('+r.status+')');
+    const source=await r.text();
+    // Run the app inside an isolated function scope. Android browsers expose
+    // window.top globally, and the app also uses an internal top() helper.
+    // Isolating the runtime prevents those names from colliding.
+    const runApp=new Function(source+'\n//# sourceURL=second-chance-runtime.js');
+    runApp();
+  }catch(e){
+    window.__scBootError=(e&&e.message?e.message:String(e));
+  }finally{
+    window.__secondChanceBootCheck?.();
+  }
+})();
+
 let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});
 btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});
 window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260824-2051').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260824-2103').catch(()=>{}));
 </script>
 </body>
 </html>
