@@ -26,7 +26,7 @@ h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}.mut
 <div id="installBar"><span>Want this to feel like an app?</span><button id="installBtn" type="button">Add to phone</button></div>
 <script>
 const SOURCE='https://raw.githubusercontent.com/marquisescott73-bit/second-chance-property-solutions/second-chance-growth-pilot/growth-pilot.html';
-const CACHE_KEY='second_chance_pilot_shell_v3';
+const CACHE_KEY='second_chance_pilot_shell_v4';
 const loading=document.getElementById('loading'),status=document.getElementById('status'),retry=document.getElementById('retry'),frame=document.getElementById('frame');
 
 function patchPilot(source){
@@ -59,9 +59,6 @@ function patchPilot(source){
     }
     saveToast.textContent=text;saveToast.style.opacity='1';
     clearTimeout(saveToast._hide);saveToast._hide=setTimeout(()=>saveToast.style.opacity='0',1300);
-  }
-  function stateDraft(step,key){
-    try{return (appState.state?.drafts||[]).find(d=>d.step_number===step&&d.draft_key===key);}catch{return null;}
   }
   function restoreDrafts(root=document){
     let drafts=[];try{drafts=appState.state?.drafts||[];}catch{return;}
@@ -98,6 +95,66 @@ function patchPilot(source){
       }catch{}
     },850));
   }
+
+  function scoreMap(checkpoint,rows){
+    const map={};(rows||[]).filter(s=>s.checkpoint===checkpoint).forEach(s=>map[s.category]=Number(s.score));return map;
+  }
+  function biggestScoreMove(rows){
+    const start=scoreMap('start',rows),after=scoreMap('after_wakeup',rows);let best=null;
+    Object.keys(start).forEach(k=>{if(after[k]==null)return;const diff=after[k]-start[k];if(!best||diff>best.diff)best={key:k,diff};});
+    return best;
+  }
+  function levelName(step){return step<=7?'WAKE UP':step<=21?'LOCK IN':'BECOME';}
+  function stepLabel(step){try{return step<=7?(dayNames[step-1]||('Step '+step)):('Step '+step);}catch{return 'Step '+step;}}
+
+  function addParticipantReceipts(){
+    const root=document.querySelector('#participantView');if(!root||document.getElementById('pilotReceipts'))return;
+    let st;try{st=appState.state||{};}catch{return;}
+    const j=st.journey||{},actions=st.actions||[],steps=st.steps||[],scores=st.scores||[];
+    if(!appState.participant)return;
+    const completed=Number(j.total_completed||0),moves=actions.filter(a=>a.status==='done'||a.status==='partly').length,notYet=actions.filter(a=>a.status==='not_yet').length,current=Math.min(Number(j.current_step||1),51),best=biggestScoreMove(scores);
+    const node=document.createElement('div');node.className='panel';node.id='pilotReceipts';
+    node.innerHTML='<h2>Your receipts</h2><p class="muted">Not streaks. Not perfection. Just proof you been doing the work.</p>'+
+      '<div class="stat-grid" style="margin-top:14px"><div class="stat"><small>Steps finished</small><strong>'+completed+'</strong></div><div class="stat"><small>Moves made</small><strong>'+moves+'</strong></div><div class="stat"><small>Still open</small><strong>'+notYet+'</strong></div><div class="stat"><small>Current focus</small><strong style="font-size:20px">'+esc(levelName(current))+'</strong></div></div>'+
+      '<div class="statusbox"><strong>Right now:</strong> '+esc(stepLabel(current))+'. '+(best&&best.diff!==0?('<br><strong>Biggest Life Score movement so far:</strong> '+esc(labels[best.key]||best.key)+' '+(best.diff>0?'+':'')+best.diff+'.'):'Your score changes will show here once you finish WAKE UP.')+'</div>'+
+      '<div class="coachline">You do not lose these receipts because you took a break. Finished is finished.</div>';
+    root.appendChild(node);
+  }
+
+  function participantDetail(p){
+    const d=appState.creatorData||{},j=(d.journeys||[]).find(x=>x.participant_id===p.id)||{},acts=(d.actions||[]).filter(x=>x.participant_id===p.id),scores=(d.scores||[]).filter(x=>x.participant_id===p.id),shared=(d.sharedReflections||[]).filter(x=>x.participant_id===p.id),best=biggestScoreMove(scores),current=Math.min(Number(j.current_step||1),51);
+    const node=document.querySelector('#creatorModal');if(!node)return;
+    const done=acts.filter(a=>a.status==='done').length,partly=acts.filter(a=>a.status==='partly').length,notYet=acts.filter(a=>a.status==='not_yet').length;
+    node.innerHTML='<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="tag">Participant progress</div><h2>'+esc(p.display_name)+'</h2><p class="muted">'+esc(p.pace||'my-own')+' · private writing stays private</p></div><button class="btn secondary" id="closeParticipantDetail">Close</button></div>'+
+      '<div class="stat-grid"><div class="stat"><small>Completed</small><strong>'+Number(j.total_completed||0)+'/51</strong></div><div class="stat"><small>Current level</small><strong style="font-size:20px">'+esc(levelName(current))+'</strong></div><div class="stat"><small>Moves done</small><strong>'+done+'</strong></div><div class="stat"><small>Not yet</small><strong>'+notYet+'</strong></div></div>'+
+      '<div class="statusbox"><strong>Current step:</strong> '+esc(stepLabel(current))+'.'+(best?('<br><strong>Biggest Life Score movement:</strong> '+esc(labels[best.key]||best.key)+' '+(best.diff>0?'+':'')+best.diff+'.'):'')+'<br><strong>Partly completed moves:</strong> '+partly+'.</div>'+
+      (shared.length?'<h3>Shared on purpose</h3>'+shared.map(r=>'<div class="shared-reflection"><small>Step '+r.step_number+' · '+esc(r.prompt_key)+'</small><p>'+esc(r.body)+'</p></div>').join(''):'<div class="privacy">🔒 No reflection text is visible here. That is the point.</div>')+'</div>';
+    document.querySelector('#closeParticipantDetail').onclick=()=>node.innerHTML='';node.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function addCreatorInsights(){
+    const root=document.querySelector('#creatorView');if(!root||document.getElementById('creatorInsights'))return;
+    const d=appState.creatorData||{},acts=d.actions||[],steps=d.steps||[],ps=d.participants||[];
+    const openCounts={};steps.filter(s=>s.status==='in_progress').forEach(s=>openCounts[s.step_number]=(openCounts[s.step_number]||0)+1);
+    const stuckEntry=Object.entries(openCounts).sort((a,b)=>b[1]-a[1])[0];
+    const doneByStep={};acts.filter(a=>a.status==='done').forEach(a=>doneByStep[a.step_number]=(doneByStep[a.step_number]||0)+1);
+    const strongEntry=Object.entries(doneByStep).sort((a,b)=>b[1]-a[1])[0];
+    const notYet=acts.filter(a=>a.status==='not_yet').length;
+    const panel=document.createElement('div');panel.className='panel';panel.id='creatorInsights';
+    panel.innerHTML='<h2>What I am noticing</h2><p class="muted">Program signals only — no private journal mining.</p><div class="two-col">'+
+      '<div class="statusbox"><strong>Most common pause point</strong><br>'+(stuckEntry?esc(stepLabel(Number(stuckEntry[0])))+' · '+stuckEntry[1]+' currently open':'Need a few testers first.')+'</div>'+
+      '<div class="statusbox"><strong>Strongest action step</strong><br>'+(strongEntry?esc(stepLabel(Number(strongEntry[0])))+' · '+strongEntry[1]+' done receipts':'Need a few action receipts first.')+'</div></div>'+
+      '<div class="coachline">'+notYet+' “not yet” receipts across '+ps.length+' participant'+(ps.length===1?'':'s')+'. Those are not failures — they tell us where the coaching may need to get better.</div>';
+    root.appendChild(panel);
+    const rows=[...root.querySelectorAll('.person')];rows.forEach((row,i)=>{const p=ps[i];if(!p)return;row.style.cursor='pointer';row.title='Open progress details';row.tabIndex=0;row.onclick=()=>participantDetail(p);row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();participantDetail(p)}};});
+  }
+
+  try{
+    const originalHome=renderParticipantHome;
+    renderParticipantHome=function(){originalHome();addParticipantReceipts();restoreDrafts(document);};
+    const originalCreator=renderCreatorDashboard;
+    renderCreatorDashboard=function(){originalCreator();addCreatorInsights();};
+  }catch{}
 
   document.addEventListener('input',e=>saveDraft(e.target),true);
   const observer=new MutationObserver(records=>{
