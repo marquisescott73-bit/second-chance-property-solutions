@@ -1,0 +1,17 @@
+(()=>{
+'use strict';
+if(new URLSearchParams(location.search).get('creator')!=='1')return;
+const SB='https://pjskrjecyzoprpqhymbq.supabase.co',KEY='sb_publishable_PRyYNqhTAhk5sr3wKbIC0g_bYCLEhwd',FN=SB+'/functions/v1/sc-growth-chat',VAPID='BAGNe0OloKwDyrYgbT1U3jBw9g6KP5KNZFpQveiRUXgT7Xg7QPlvJwmOx6wh1_du6ILOxSNhE20FabXU4b-hZt4';
+const get=(k,s=false)=>{try{return (s?sessionStorage:localStorage).getItem(k)||''}catch{return''}},set=(k,v)=>{try{localStorage.setItem(k,String(v))}catch{}};
+let busy=false;
+function key(s){const p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}
+function token(){return get('sc_creator_token',true)}
+async function api(op,body={}){const t=token();if(!t)throw Error('Sign in to the Creator Dashboard again.');const r=await fetch(FN,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+t},body:JSON.stringify({op,...body})});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not update message alerts.');return d}
+async function registration(){if(!('serviceWorker'in navigator)||!('PushManager'in window))throw Error('Background push is not supported on this browser.');return navigator.serviceWorker.register('./sw.js?v=public-5',{scope:'./'})}
+async function enable(){if(busy)return;busy=true;try{if(!('Notification'in window))throw Error('Notifications are not supported on this browser.');const p=await Notification.requestPermission();if(p!=='granted')throw Error('Notification permission was not allowed.');const reg=await registration();let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key(VAPID)});await api('push_subscribe',{subscription:sub.toJSON(),userAgent:navigator.userAgent});set('sc_creator_message_alerts','1');set('sc_creator_push_active','1');sync()}catch(e){alert(e.message);set('sc_creator_push_active','0');sync()}finally{busy=false}}
+async function disable(){if(busy)return;busy=true;try{const reg=await registration(),sub=await reg.pushManager.getSubscription();if(sub){const endpoint=sub.endpoint;try{await api('push_unsubscribe',{endpoint})}catch{}await sub.unsubscribe()}set('sc_creator_message_alerts','0');set('sc_creator_push_active','0');sync()}catch(e){alert(e.message)}finally{busy=false}}
+function on(){return get('sc_creator_push_active')==='1'&&'Notification'in window&&Notification.permission==='granted'}
+function sync(){const b=document.getElementById('alerts');if(!b)return;b.textContent=on()?'🔔 Background alerts on':'🔕 Enable message alerts';b.onclick=()=>on()?disable():enable()}
+async function restore(){if(get('sc_creator_message_alerts')!=='1'||!('Notification'in window)||Notification.permission!=='granted')return;try{const reg=await registration();let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key(VAPID)});await api('push_subscribe',{subscription:sub.toJSON(),userAgent:navigator.userAgent});set('sc_creator_push_active','1');sync()}catch{set('sc_creator_push_active','0');sync()}}
+const mo=new MutationObserver(()=>queueMicrotask(sync));mo.observe(document.body,{childList:true,subtree:true});sync();setTimeout(restore,800);
+})();
