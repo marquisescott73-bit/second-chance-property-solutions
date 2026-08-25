@@ -6,6 +6,7 @@ on:
     paths:
       - 'second-chance/**'
       - 'second-chance-pilot/chat-admin-launcher.js'
+      - 'second-chance-pilot/push-admin-launcher.js'
       - 'second-chance-pilot/creator-tools.js'
       - 'second-chance-pilot/index.html'
       - '.github/workflows/second-chance-public-check.yml'
@@ -30,9 +31,11 @@ jobs:
           node --check second-chance/beta-upgrades.js
           node --check second-chance/chat-launcher.js
           node --check second-chance/chat.js
+          node --check second-chance/creator-push.js
           node --check second-chance/sw.js
           node --check second-chance/preview.js
           node --check second-chance-pilot/chat-admin-launcher.js
+          node --check second-chance-pilot/push-admin-launcher.js
           node --check second-chance-pilot/creator-tools.js
       - name: Public account app contract
         run: |
@@ -53,28 +56,32 @@ jobs:
           for(const s of ['Privacy + Terms','sc_terms_version','sc_app','Need a nudge?','nudge_set','nudge_get','sc-growth-support']) if(!beta.includes(s)) throw new Error('Beta upgrade missing '+s);
           for(const s of ['Your journal privacy','8–12 hours','not emergency or crisis support','Creator notes','2026-08-25-beta1']) if(!legal.includes(s)) throw new Error('Privacy/terms missing '+s);
           for(const s of ["type')==='recovery'",'access_token','__SC_RECOVERY__']) if(!pre.includes(s)) throw new Error('Recovery preflight missing '+s);
-          for(const s of ['./recovery-pre.js','./enhancements.js','./beta-upgrades.js','./chat-launcher.js','public-4']) if(!html.includes(s)) throw new Error('Runtime asset missing '+s);
-          if(!sw.includes("second-chance-public-v4")||!sw.includes("./beta-upgrades.js")||!sw.includes("./privacy-terms.html")||!sw.includes("./chat.html")||!sw.includes("./chat.js")) throw new Error('Service worker cache was not bumped for beta upgrades');
+          for(const s of ['./recovery-pre.js','./enhancements.js','./beta-upgrades.js','./chat-launcher.js','public-5']) if(!html.includes(s)) throw new Error('Runtime asset missing '+s);
+          for(const s of ['second-chance-public-v5','./beta-upgrades.js','./privacy-terms.html','./chat.html','./chat.js','./creator-push.js',"addEventListener('push'",'notificationclick']) if(!sw.includes(s)) throw new Error('Service worker missing '+s);
           if(!js.includes('STEPS[S.step-1]')) throw new Error('51-step content engine not connected');
           if(!js.includes("n>=51")&&!js.includes("x.n>=51")) throw new Error('Final completion path missing');
           if(manifest.display!=='standalone'||manifest.start_url!=='./') throw new Error('PWA manifest wrong');
-          console.log('PASS: public signup/login, privacy consent, nudges, recovery, bug reporting, journey engine, cover, and PWA wiring present');
+          console.log('PASS: public signup/login, privacy consent, nudges, recovery, bug reporting, push-ready PWA, journey engine, and cover are wired');
           NODE
-      - name: Live chat contract
+      - name: Live chat and push contract
         run: |
           node <<'NODE'
           const fs=require('fs');
           const html=fs.readFileSync('second-chance/chat.html','utf8');
           const chat=fs.readFileSync('second-chance/chat.js','utf8');
+          const push=fs.readFileSync('second-chance/creator-push.js','utf8');
           const launch=fs.readFileSync('second-chance/chat-launcher.js','utf8');
           const admin=fs.readFileSync('second-chance-pilot/chat-admin-launcher.js','utf8');
+          const pushAdmin=fs.readFileSync('second-chance-pilot/push-admin-launcher.js','utf8');
           const pilot=fs.readFileSync('second-chance-pilot/index.html','utf8');
-          for(const s of ['chat.js','Talk It Through','quick-replies','crisis','alert-toggle']) if(!html.includes(s)) throw new Error('Chat shell missing '+s);
+          for(const s of ['chat.js','creator-push.js','Talk It Through','quick-replies','crisis','alert-toggle']) if(!html.includes(s)) throw new Error('Chat shell missing '+s);
           for(const s of ['sc-growth-chat','participantThread','creatorInbox','creatorThread','sendParticipant','sendCreator','8–12 hours','Quick Replies','sendQuick','988','Enable message alerts','Notification']) if(!chat.toLowerCase().includes(s.toLowerCase())) throw new Error('Chat runtime missing '+s);
+          for(const s of ['pushManager.subscribe','push_subscribe','push_unsubscribe','applicationServerKey','sc_creator_push_active']) if(!push.includes(s)) throw new Error('Creator background push missing '+s);
           for(const s of ['Wanna talk through it?','sc_chat_context_step','sc-growth-chat']) if(!launch.includes(s)) throw new Error('Participant launcher missing '+s);
           for(const s of ['Messages','sc-growth-chat','chat.html?creator=1','Notification','sc_creator_message_alerts']) if(!admin.includes(s)) throw new Error('Creator launcher missing '+s);
-          if(!pilot.includes('chat-admin-launcher.js')) throw new Error('Creator dashboard does not load Messages launcher');
-          console.log('PASS: participant chat, creator inbox, quick replies, safety boundary, alerts, unread badges, journey context, and 8–12 hour expectation are wired');
+          for(const s of ['Enable alerts','pushManager.subscribe','push_subscribe','push_unsubscribe','sc_creator_push_active']) if(!pushAdmin.includes(s)) throw new Error('Creator dashboard push toggle missing '+s);
+          for(const s of ['chat-admin-launcher.js','push-admin-launcher.js']) if(!pilot.includes(s)) throw new Error('Creator dashboard missing '+s);
+          console.log('PASS: participant chat, creator inbox, quick replies, safety boundary, unread badges, 8–12 hour expectation, and background web push are wired');
           NODE
       - name: Creator analytics and notes contract
         run: |
