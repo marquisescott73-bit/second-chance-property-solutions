@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'second-chance/**'
+      - 'second-chance-pilot/chat-admin-launcher.js'
+      - 'second-chance-pilot/index.html'
       - '.github/workflows/second-chance-public-check.yml'
   workflow_dispatch:
 
@@ -24,8 +26,11 @@ jobs:
           node --check second-chance/app.js
           node --check second-chance/recovery-pre.js
           node --check second-chance/enhancements.js
+          node --check second-chance/chat-launcher.js
+          node --check second-chance/chat.js
           node --check second-chance/sw.js
           node --check second-chance/preview.js
+          node --check second-chance-pilot/chat-admin-launcher.js
       - name: Public account app contract
         run: |
           node <<'NODE'
@@ -41,12 +46,28 @@ jobs:
           for(const s of ['/auth/v1/signup','grant_type=password','sc-growth-public','bootstrap','complete_step','save_reflection','save_action','save_scores']) if(!js.includes(s)) throw new Error('Public app missing '+s);
           for(const s of ['/auth/v1/recover','/auth/v1/user','Forgot password?','Check your email','Something ain’t working','sc-growth-report','userAgent']) if(!enh.includes(s)) throw new Error('Account polish missing '+s);
           for(const s of ["type')==='recovery'",'access_token','__SC_RECOVERY__']) if(!pre.includes(s)) throw new Error('Recovery preflight missing '+s);
-          for(const s of ['./recovery-pre.js','./enhancements.js','public-2']) if(!html.includes(s)) throw new Error('New runtime asset missing '+s);
-          if(!sw.includes("second-chance-public-v2")||!sw.includes("./enhancements.js")||!sw.includes("./recovery-pre.js")) throw new Error('Service worker cache was not bumped for account polish');
+          for(const s of ['./recovery-pre.js','./enhancements.js','./chat-launcher.js','public-3']) if(!html.includes(s)) throw new Error('Runtime asset missing '+s);
+          if(!sw.includes("second-chance-public-v3")||!sw.includes("./chat.html")||!sw.includes("./chat.js")||!sw.includes("./chat-launcher.js")) throw new Error('Service worker cache was not bumped for live chat');
           if(!js.includes('STEPS[S.step-1]')) throw new Error('51-step content engine not connected');
           if(!js.includes("n>=51")&&!js.includes("x.n>=51")) throw new Error('Final completion path missing');
           if(manifest.display!=='standalone'||manifest.start_url!=='./') throw new Error('PWA manifest wrong');
-          console.log('PASS: public signup/login, password recovery, confirmation flow, bug reporting, journey engine, cover, and PWA wiring present');
+          console.log('PASS: public signup/login, recovery, bug reporting, live chat assets, journey engine, cover, and PWA wiring present');
+          NODE
+      - name: Live chat contract
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('second-chance/chat.html','utf8');
+          const chat=fs.readFileSync('second-chance/chat.js','utf8');
+          const launch=fs.readFileSync('second-chance/chat-launcher.js','utf8');
+          const admin=fs.readFileSync('second-chance-pilot/chat-admin-launcher.js','utf8');
+          const pilot=fs.readFileSync('second-chance-pilot/index.html','utf8');
+          for(const s of ['8–12 hours','chat.js','Talk It Through']) if(!html.includes(s)) throw new Error('Chat shell missing '+s);
+          for(const s of ['sc-growth-chat','participantThread','creatorInbox','creatorThread','sendParticipant','sendCreator','8–12 hours']) if(!chat.includes(s)) throw new Error('Chat runtime missing '+s);
+          for(const s of ['Wanna talk through it?','sc_chat_context_step','sc-growth-chat']) if(!launch.includes(s)) throw new Error('Participant launcher missing '+s);
+          for(const s of ['Messages','sc-growth-chat','chat.html?creator=1']) if(!admin.includes(s)) throw new Error('Creator launcher missing '+s);
+          if(!pilot.includes('chat-admin-launcher.js')) throw new Error('Creator dashboard does not load Messages launcher');
+          console.log('PASS: participant chat, creator inbox, unread badges, journey context, and 8–12 hour reply expectation are wired');
           NODE
       - name: Full preview contract
         run: |
