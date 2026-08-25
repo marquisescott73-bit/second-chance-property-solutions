@@ -16,6 +16,7 @@
 #boot h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}
 #boot p{color:#6d7872;line-height:1.55;margin:0}
 #boot .bootdot{width:12px;height:12px;border-radius:50%;background:#c87559;margin:18px auto;animation:bootpulse 1s infinite alternate}
+#boot .debug{margin-top:10px;font-size:11px;line-height:1.4;color:#8a6658;word-break:break-word}
 @keyframes bootpulse{to{opacity:.25;transform:scale(.7)}}
 #boot .retry{display:none;margin:16px auto 0;border:0;background:#c87559;color:#fff;border-radius:14px;padding:11px 16px;font-weight:800}
 #installPrompt{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:80;display:none;align-items:center;gap:8px;background:#2f3b35;color:#fffdfa;border-radius:999px;padding:7px 7px 7px 12px;box-shadow:0 10px 35px rgba(47,59,53,.22);font-size:12px;font-weight:750}
@@ -24,40 +25,64 @@
 </style>
 </head>
 <body>
-<div id="boot"><div class="bootcard"><h1>Second Chance</h1><p id="bootText">Loading your journey…</p><div class="bootdot" id="bootDot"></div><button class="retry" id="bootRetry" type="button">Reload app</button></div></div>
+<div id="boot"><div class="bootcard"><h1>Second Chance</h1><p id="bootText">Loading your journey…</p><div class="bootdot" id="bootDot"></div><div class="debug" id="bootDebug"></div><button class="retry" id="bootRetry" type="button">Reload app</button></div></div>
 <div id="app"></div>
 <div id="toast" class="toast" aria-live="polite"></div>
 <div id="installPrompt"><span>Want this on your phone?</span><button id="installBtn" type="button">Add app</button></div>
 <script>
 (function(){
+  /* Some Android/in-app browsers can expose sessionStorage but throw a SecurityError when it is read.
+     Give the pilot a temporary in-memory fallback instead of letting that kill the entire app. */
+  try{
+    window.sessionStorage.getItem('__sc_probe__');
+  }catch(storageError){
+    try{
+      const memory={};
+      Object.defineProperty(window,'sessionStorage',{
+        configurable:true,
+        value:{
+          getItem:k=>Object.prototype.hasOwnProperty.call(memory,k)?memory[k]:null,
+          setItem:(k,v)=>{memory[k]=String(v)},
+          removeItem:k=>{delete memory[k]},
+          clear:()=>{for(const k of Object.keys(memory))delete memory[k]}
+        }
+      });
+    }catch(_ignored){}
+  }
+
   const params=new URLSearchParams(location.search),incoming=params.get('invite');
   if(incoming){try{localStorage.setItem('sc_invite_token',incoming)}catch{}}
   if(!params.get('creator')&&!incoming){
     let saved='';try{saved=localStorage.getItem('sc_invite_token')||''}catch{}
     if(saved)history.replaceState(null,'',location.pathname+'?invite='+encodeURIComponent(saved));
   }
+
   let bootError='';
-  window.addEventListener('error',e=>{bootError=e.message||'The app hit a startup error.'});
+  window.addEventListener('error',e=>{
+    const where=e.filename?(' · '+e.filename.split('/').pop()+':'+(e.lineno||'?')):'';
+    bootError=(e.message||'A startup resource failed')+where;
+  },true);
   window.addEventListener('unhandledrejection',e=>{bootError=e.reason?.message||String(e.reason||'The app hit a startup error.')});
   window.__secondChanceBootCheck=()=>{
-    const boot=document.getElementById('boot'),app=document.getElementById('app'),text=document.getElementById('bootText'),dot=document.getElementById('bootDot'),retry=document.getElementById('bootRetry');
+    const boot=document.getElementById('boot'),app=document.getElementById('app'),text=document.getElementById('bootText'),dot=document.getElementById('bootDot'),retry=document.getElementById('bootRetry'),debug=document.getElementById('bootDebug');
     setTimeout(()=>{
       if(app&&app.innerHTML.trim()){boot.style.display='none';return;}
-      text.textContent=bootError?'Second Chance hit a startup problem. Tap reload and I’ll try again.':'Second Chance didn’t finish loading. Tap reload and I’ll try again.';
+      text.textContent='Second Chance hit a startup problem. Tap reload and I’ll try again.';
+      debug.textContent=bootError?('Error: '+bootError):'Error: app did not render.';
       dot.style.display='none';retry.style.display='inline-block';retry.onclick=()=>location.reload();
-    },900);
+    },1000);
   };
 })();
 </script>
-<script src="./steps.js"></script>
-<script src="./app.js"></script>
+<script src="./steps.js?v=20260824-2051"></script>
+<script src="./app.js?v=20260824-2051"></script>
 <script>
 window.__secondChanceBootCheck?.();
 let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});
 btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});
 window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260824-2051').catch(()=>{}));
 </script>
 </body>
 </html>
