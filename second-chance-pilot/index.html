@@ -57,6 +57,7 @@
 (async function loadSecondChance(){try{const r=await fetch('./app.js?v=20260825-1342',{cache:'no-store'});if(!r.ok)throw new Error('Could not load app.js ('+r.status+')');const source=await r.text();const runApp=new Function(source+'\n//# sourceURL=second-chance-runtime.js');runApp()}catch(e){window.__scBootError=(e&&e.message?e.message:String(e))}finally{window.__secondChanceBootCheck?.()}})();
 let installEvent=null,bar=document.getElementById('installPrompt'),btn=document.getElementById('installBtn');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;bar.style.display='flex'});btn.addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();try{await installEvent.userChoice}catch{}installEvent=null;bar.style.display='none'});window.addEventListener('appinstalled',()=>{bar.style.display='none';installEvent=null});if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=20260825-1342').catch(()=>{}));
 </script>
-<script src="./chat-admin-launcher.js?v=chat-1"></script>
+<script src="./chat-admin-launcher.js?v=chat-2"></script>
+<script src="./creator-tools.js?v=tools-1"></script>
 </body>
 </html>
