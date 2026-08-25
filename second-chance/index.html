@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f3eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Second Chance</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="../second-chance-pilot/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../second-chance-pilot/app.css?v=public-1">
+<style>
+:root{--cream:#f7f3eb;--paper:#fffdfa;--ink:#2f3b35;--muted:#6d7872;--terra:#c87559;--line:#d9d7cf;--sage:#dfe9df}
+html,body{min-height:100%;background:var(--cream)}
+#boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:var(--cream);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
+#boot .card{width:min(430px,100%);background:var(--paper);border:1px solid var(--line);border-radius:28px;padding:26px;box-shadow:0 14px 50px rgba(47,59,53,.08)}
+#boot h1{font-family:Georgia,serif;font-size:38px;line-height:.96;margin:0 0 12px}#boot p{color:var(--muted);line-height:1.55}.dot{width:12px;height:12px;border-radius:50%;background:var(--terra);margin:18px auto;animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.25;transform:scale(.7)}}
+.public-cover{min-height:100svh;display:grid;place-items:center;padding:22px;background:radial-gradient(circle at 18% 12%,rgba(255,255,255,.82),transparent 34%),linear-gradient(180deg,#fbf5ea,#f3e6d5)}
+.cover-wrap{width:min(480px,100%);text-align:center}.cover-brand{font-family:Georgia,serif;font-size:40px;letter-spacing:-.04em;margin:0;color:#4a3d34}.cover-sub{color:#c87559;margin:6px 0 18px}.cover-line{font-family:Georgia,serif;font-size:34px;line-height:1.02;margin:0 0 18px;color:#53463d}.cover-line em{font-style:normal;color:#c87559}.cover-art{width:min(340px,85vw);filter:drop-shadow(0 22px 30px rgba(79,62,48,.18));margin:0 auto 18px;display:block}.cover-actions{display:grid;gap:11px;margin-top:12px}.cover-actions button{min-height:54px;border-radius:16px;font-size:16px;font-weight:850;cursor:pointer}.cover-primary{border:0;background:linear-gradient(90deg,#d88865,#e0a17f);color:white}.cover-secondary{border:1.5px solid #d88865;background:rgba(255,253,250,.58);color:#b76b4e}.cover-note{font-size:12px;color:#6b635d;margin-top:12px}.creator-link{margin-top:9px;border:0;background:none;color:#7d756f;text-decoration:underline;font-size:12px;cursor:pointer}
+.auth-wrap{min-height:100svh;padding:22px;display:grid;place-items:center}.auth-card{width:min(520px,100%);background:var(--paper);border:1px solid var(--line);border-radius:28px;padding:24px;box-shadow:0 14px 45px rgba(47,59,53,.07)}.auth-card h1,.auth-card h2{font-family:Georgia,serif;letter-spacing:-.035em}.auth-card h1{font-size:42px;line-height:.96}.auth-card h2{font-size:30px}.auth-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.mini-back{border:1px solid var(--line);background:white;border-radius:12px;padding:9px 12px;font-weight:800;color:#5c6862}.field label{display:block;font-weight:800;margin:0 0 6px}.field input,.field textarea{width:100%;border:1px solid #d6ddd7;background:#fff;color:#34423a;border-radius:14px;padding:13px;box-sizing:border-box}.field{margin:14px 0}.auth-actions{display:grid;gap:10px;margin-top:16px}.auth-actions button{min-height:48px;border-radius:14px;font-weight:850}.btn-main{border:0;background:var(--terra);color:#fff}.btn-alt{border:1px solid #ccd5cf;background:#fff;color:#536159}.auth-msg{margin-top:12px}.auth-msg .err{background:#f8e6df;color:#8d4935;padding:12px;border-radius:12px}.auth-msg .ok{background:#e7f1e7;color:#45624d;padding:12px;border-radius:12px}.setup-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.setup-score{background:#f4f7f3;border:1px solid #d9ded9;border-radius:14px;padding:11px}.setup-score .row{display:flex;justify-content:space-between;font-size:12px;font-weight:800}.setup-score input{width:100%;accent-color:var(--terra)}.agreement{display:flex;gap:9px;align-items:flex-start;background:#f6f8f5;border:1px solid #d9ded9;padding:11px;border-radius:13px;margin:8px 0}.agreement input{margin-top:2px;accent-color:var(--terra)}
+.accountbar{display:flex;justify-content:flex-end;padding:10px 16px 0}.accountbar button{border:1px solid #d4d9d4;background:#fffdfa;border-radius:999px;padding:8px 11px;color:#5d6862;font-weight:800;font-size:12px}.accountbar span{font-size:12px;color:#768078;margin-right:8px;align-self:center}.journey-shell{padding-bottom:72px}.public-error{padding:12px;background:#f8e6df;color:#8d4935;border-radius:12px;margin-top:12px}.public-success{padding:12px;background:#e7f1e7;color:#45624d;border-radius:12px;margin-top:12px}
+@media(max-width:620px){.setup-grid{grid-template-columns:1fr}.cover-brand{font-size:34px}.cover-line{font-size:29px}.auth-card{padding:20px}.auth-card h1{font-size:36px}}
+</style>
+</head>
+<body>
+<div id="boot"><div class="card"><h1>Second Chance</h1><p id="bootText">Opening your journey…</p><div class="dot"></div></div></div>
+<div id="app"></div><div id="toast" class="toast" aria-live="polite"></div>
+<script src="../second-chance-pilot/steps.js?v=public-1"></script>
+<script src="./app.js?v=public-1"></script>
+<script>
+setTimeout(()=>{const b=document.getElementById('boot');if(b)b.style.display='none'},650);
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=public-1').catch(()=>{}));
+</script>
+</body>
+</html>
