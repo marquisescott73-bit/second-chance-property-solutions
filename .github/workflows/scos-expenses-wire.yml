@@ -17,23 +17,34 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Wire expenses assets safely in the document head
+      - name: Harden expenses tile and wire assets safely
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
+          js_path = Path('scos-expenses.js')
+          js = js_path.read_text(encoding='utf-8')
+          js = js.replace('const VERSION = "2026.08.29.1";', 'const VERSION = "2026.08.29.2";')
+          old = '''    tile.removeAttribute("data-panel");
+    if (tile.tagName === "BUTTON") tile.type = "button";
+    else { tile.setAttribute("role", "button"); tile.tabIndex = 0; }
+    tile.innerHTML = `<strong>Expenses &amp; Reimbursements</strong><span>Spending, receipts, paybacks</span>`;'''
+          new = '''    tile.removeAttribute("data-panel");
+    tile.removeAttribute("data-go");
+    if (tile.tagName === "BUTTON") tile.type = "button";
+    else { tile.setAttribute("role", "button"); tile.tabIndex = 0; }
+    tile.innerHTML = `Expenses &amp; Reimbursements<span>Spending, receipts, paybacks</span>`;'''
+          if old in js:
+              js = js.replace(old, new, 1)
+          elif 'tile.removeAttribute("data-go");' not in js:
+              raise SystemExit('Could not locate expenses tile wiring block')
+          js_path.write_text(js, encoding='utf-8')
+
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
-
-          # Remove any prior runtime tag wherever it landed. An earlier pass could
-          # encounter a literal </body> inside a report-print template string.
-          old_tags = [
-              '  <script src="scos-expenses.js?v=20260829-1" data-scos-expenses-js="1" defer></script>\n',
-              '  <script src="scos-expenses.js?v=20260829-2" data-scos-expenses-js="1" defer></script>\n',
-          ]
-          for old in old_tags:
-              text = text.replace(old, '')
+          for version in ('1','2','3'):
+              text = text.replace(f'  <script src="scos-expenses.js?v=20260829-{version}" data-scos-expenses-js="1" defer></script>\n', '')
 
           css_tag = '  <link rel="stylesheet" href="scos-expenses.css?v=20260829-1" data-scos-expenses-css="1" />\n'
           if css_tag not in text:
@@ -41,9 +52,8 @@ jobs:
                   raise SystemExit('Could not find </head> in index.html')
               text = text.replace('</head>', css_tag + '</head>', 1)
 
-          js_tag = '  <script src="scos-expenses.js?v=20260829-2" data-scos-expenses-js="1" defer></script>\n'
-          if js_tag not in text:
-              text = text.replace(css_tag, css_tag + js_tag, 1)
+          js_tag = '  <script src="scos-expenses.js?v=20260829-3" data-scos-expenses-js="1" defer></script>\n'
+          text = text.replace(css_tag, css_tag + js_tag, 1)
 
           if text.count('data-scos-expenses-js="1"') != 1:
               raise SystemExit('Expected exactly one expenses runtime tag')
@@ -53,15 +63,18 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Commit wired OS page
+      - name: Validate expenses JavaScript
+        run: node --check scos-expenses.js
+
+      - name: Commit hardened expenses module
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html scos-expenses.js
           if git diff --cached --quiet; then
             echo "Expenses module is already wired safely."
             exit 0
           fi
-          git commit -m "Fix Expenses & Reimbursements runtime wiring"
+          git commit -m "Harden Expenses & Reimbursements tile"
           git push
