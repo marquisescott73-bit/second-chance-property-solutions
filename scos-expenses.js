@@ -3,7 +3,7 @@
   if (window.__SCOS_EXPENSES_MODULE__) return;
   window.__SCOS_EXPENSES_MODULE__ = true;
 
-  const VERSION = "2026.08.29.1";
+  const VERSION = "2026.08.29.2";
   const SUPABASE_URL = "https://pjskrjecyzoprpqhymbq.supabase.co";
   const SUPABASE_KEY = "sb_publishable_PRyYNqhTAhk5sr3wKbIC0g_bYCLEhwd";
   const RECEIPT_BUCKET = "tax-documents";
@@ -123,9 +123,10 @@
     tile.removeAttribute("data-view");
     tile.removeAttribute("data-route");
     tile.removeAttribute("data-panel");
+    tile.removeAttribute("data-go");
     if (tile.tagName === "BUTTON") tile.type = "button";
     else { tile.setAttribute("role", "button"); tile.tabIndex = 0; }
-    tile.innerHTML = `<strong>Expenses &amp; Reimbursements</strong><span>Spending, receipts, paybacks</span>`;
+    tile.innerHTML = `Expenses &amp; Reimbursements<span>Spending, receipts, paybacks</span>`;
     tile.addEventListener("click", e => { e.preventDefault(); openExpenses(); });
     tile.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openExpenses(); } });
     anchor.parentElement.appendChild(tile);
