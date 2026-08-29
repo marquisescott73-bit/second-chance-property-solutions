@@ -1,0 +1,54 @@
+name: Second Chance OS Root QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'os-theme.css'
+      - 'scos-expenses.js'
+      - 'scos-expenses.css'
+      - '.github/workflows/scos-root-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Expenses JavaScript syntax
+        run: node --check scos-expenses.js
+      - name: Root OS expenses contract
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html','utf8');
+          const js = fs.readFileSync('scos-expenses.js','utf8');
+          const css = fs.readFileSync('scos-expenses.css','utf8');
+          const requiredHtml = ['data-scos-expenses-css="1"','data-scos-expenses-js="1"','scos-expenses.css','scos-expenses.js'];
+          for (const s of requiredHtml) if (!html.includes(s)) throw new Error('Root OS missing '+s);
+          if ((html.match(/data-scos-expenses-css="1"/g)||[]).length !== 1) throw new Error('Expenses CSS tag must appear exactly once');
+          if ((html.match(/data-scos-expenses-js="1"/g)||[]).length !== 1) throw new Error('Expenses JS tag must appear exactly once');
+          for (const s of ['business_expenses','organization_members','tax-documents','Expenses & Reimbursements','reimbursementStatus','deductiblePercent']) if (!js.includes(s)) throw new Error('Expenses runtime missing '+s);
+          for (const s of ['#scosExpensesTile','.scos-expense-overlay','.scos-expense-table','.scos-expense-form-grid']) if (!css.includes(s)) throw new Error('Expenses styles missing '+s);
+          const reportStart = html.indexOf('printWindow.document.write');
+          if (reportStart >= 0) {
+            const reportChunk = html.slice(reportStart, reportStart + 1800);
+            if (reportChunk.includes('data-scos-expenses-js')) throw new Error('Expenses runtime must not be injected into report print markup');
+          }
+          const marker = html.indexOf('Everything is still here');
+          if (marker >= 0) {
+            console.log('CONTROL_TOWER_CONTEXT_START');
+            console.log(html.slice(Math.max(0, marker - 2200), marker + 5200));
+            console.log('CONTROL_TOWER_CONTEXT_END');
+          } else {
+            console.log('Control Tower heading is generated dynamically; runtime tile fallback remains active.');
+          }
+          console.log('PASS: Expenses & Reimbursements runtime, styles, cloud table hooks, and safe root wiring are present');
+          NODE
