@@ -833,6 +833,7 @@ body.public-mode #authScreen,body.public-mode #appShell,body.public-mode #mobile
 </style>
   <link rel="stylesheet" href="./os-theme.css" />
   <link rel="stylesheet" href="scos-expenses.css?v=20260829-1" data-scos-expenses-css="1" />
+  <script src="scos-expenses.js?v=20260829-2" data-scos-expenses-js="1" defer></script>
 </head>
 <body class="auth-pending public-mode">
 
@@ -5437,8 +5438,7 @@ activeWorkflowFiles = [];
     const markup = reportMarkup(unit, activeReportFiles);
     const printWindow = window.open("", "_blank");
     if (!printWindow) return toast("Allow pop-ups to print or save the report as a PDF.");
-    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Second Chance OS Completion Report</title><style>${document.querySelector("style")?.textContent || ""}body{background:#fff;padding:18px}.completion-report{box-shadow:none;margin:0 auto}@media print{body{padding:0}.completion-report{border:0;box-shadow:none}.report-photo{break-inside:avoid}.report-section{break-inside:avoid}}</style></head><body>${markup}  <script src="scos-expenses.js?v=20260829-1" data-scos-expenses-js="1" defer></script>
-</body></html>`);
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Second Chance OS Completion Report</title><style>${document.querySelector("style")?.textContent || ""}body{background:#fff;padding:18px}.completion-report{box-shadow:none;margin:0 auto}@media print{body{padding:0}.completion-report{border:0;box-shadow:none}.report-photo{break-inside:avoid}.report-section{break-inside:avoid}}</style></head><body>${markup}</body></html>`);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => printWindow.print(), 450);
