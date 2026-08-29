@@ -22,44 +22,33 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           js_path = Path('scos-expenses.js')
           js = js_path.read_text(encoding='utf-8')
           js = js.replace('const VERSION = "2026.08.29.1";', 'const VERSION = "2026.08.29.2";')
-          old = '''    tile.removeAttribute("data-panel");
-    if (tile.tagName === "BUTTON") tile.type = "button";
-    else { tile.setAttribute("role", "button"); tile.tabIndex = 0; }
-    tile.innerHTML = `<strong>Expenses &amp; Reimbursements</strong><span>Spending, receipts, paybacks</span>`;'''
-          new = '''    tile.removeAttribute("data-panel");
-    tile.removeAttribute("data-go");
-    if (tile.tagName === "BUTTON") tile.type = "button";
-    else { tile.setAttribute("role", "button"); tile.tabIndex = 0; }
-    tile.innerHTML = `Expenses &amp; Reimbursements<span>Spending, receipts, paybacks</span>`;'''
-          if old in js:
-              js = js.replace(old, new, 1)
-          elif 'tile.removeAttribute("data-go");' not in js:
-              raise SystemExit('Could not locate expenses tile wiring block')
+          needle = '    tile.removeAttribute("data-panel");\n'
+          if 'tile.removeAttribute("data-go");' not in js:
+              if needle not in js:
+                  raise SystemExit('Could not locate expenses tile attribute block')
+              js = js.replace(needle, needle + '    tile.removeAttribute("data-go");\n', 1)
+          js = js.replace('tile.innerHTML = `<strong>Expenses &amp; Reimbursements</strong><span>Spending, receipts, paybacks</span>`;', 'tile.innerHTML = `Expenses &amp; Reimbursements<span>Spending, receipts, paybacks</span>`;', 1)
           js_path.write_text(js, encoding='utf-8')
 
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
           for version in ('1','2','3'):
-              text = text.replace(f'  <script src="scos-expenses.js?v=20260829-{version}" data-scos-expenses-js="1" defer></script>\n', '')
-
+              tag = f'  <script src="scos-expenses.js?v=20260829-{version}" data-scos-expenses-js="1" defer></script>\n'
+              text = text.replace(tag, '')
           css_tag = '  <link rel="stylesheet" href="scos-expenses.css?v=20260829-1" data-scos-expenses-css="1" />\n'
           if css_tag not in text:
               if '</head>' not in text:
-                  raise SystemExit('Could not find </head> in index.html')
+                  raise SystemExit('Could not find document head')
               text = text.replace('</head>', css_tag + '</head>', 1)
-
           js_tag = '  <script src="scos-expenses.js?v=20260829-3" data-scos-expenses-js="1" defer></script>\n'
           text = text.replace(css_tag, css_tag + js_tag, 1)
-
           if text.count('data-scos-expenses-js="1"') != 1:
               raise SystemExit('Expected exactly one expenses runtime tag')
           if text.count('data-scos-expenses-css="1"') != 1:
               raise SystemExit('Expected exactly one expenses stylesheet tag')
-
           path.write_text(text, encoding='utf-8')
           PY
 
