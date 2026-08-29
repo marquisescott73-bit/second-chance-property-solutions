@@ -1,0 +1,57 @@
+name: Wire SCOS Expenses Module
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/scos-expenses-wire.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  wire-expenses:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Add expenses assets to the main OS page
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          css_marker = 'data-scos-expenses-css="1"'
+          js_marker = 'data-scos-expenses-js="1"'
+
+          if css_marker not in text:
+              tag = '  <link rel="stylesheet" href="scos-expenses.css?v=20260829-1" data-scos-expenses-css="1" />\n'
+              if '</head>' not in text:
+                  raise SystemExit('Could not find </head> in index.html')
+              text = text.replace('</head>', tag + '</head>', 1)
+
+          if js_marker not in text:
+              tag = '  <script src="scos-expenses.js?v=20260829-1" data-scos-expenses-js="1" defer></script>\n'
+              if '</body>' not in text:
+                  raise SystemExit('Could not find </body> in index.html')
+              text = text.replace('</body>', tag + '</body>', 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit wired OS page
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Expenses module is already wired."
+            exit 0
+          fi
+          git commit -m "Show Expenses & Reimbursements in Second Chance OS"
+          git push
