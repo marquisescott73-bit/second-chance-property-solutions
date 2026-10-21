@@ -10891,7 +10891,9 @@ const savedIndex = records.findIndex(item => String(item.id) === String(saved.id
   const scos74LegacyInviteRoleChoices=inviteRoleChoices;
   inviteRoleChoices=function scos74InviteRoleChoices(){
     if(!scos74IsOwner()) return scos74LegacyInviteRoleChoices();
-    return [["administrative_staff","Administrative Staff"],["field_manager","Field Manager"],["crew_leader","Crew Leader"],["employee","Employee"],["client","Client"]];
+    const roles=[["administrative_staff","Administrative Staff"],["field_manager","Field Manager"],["crew_leader","Crew Leader"],["employee","Employee"],["client","Client"]];
+    if(authContext?.role==="owner") roles.unshift(["operations_manager","COO / Operations Manager"]);
+    return roles;
   };
   const scos74LegacyAccessRoleLabel=accessRoleLabel;
   accessRoleLabel=function scos74AccessRoleLabel(role){return SCOS74_ROLE_LABELS[role]||scos74LegacyAccessRoleLabel(role);};
