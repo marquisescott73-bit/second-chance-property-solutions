@@ -52,3 +52,29 @@ jobs:
           }
           console.log('PASS: Expenses & Reimbursements runtime, styles, cloud table hooks, and safe root wiring are present');
           NODE
+
+      - name: Login and navigation regression guards
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html','utf8');
+          const required = [
+            'allowOwnerBootstrap: false',
+            'Authorized cloud login is required.',
+            'context?.mode !== "cloud"',
+            'Settings & Backup',
+            'scos-navigation-upgrade-20261021',
+            'id="contact"',
+            'data-scos22-proposal-center',
+            'navigate("quotes")'
+          ];
+          for (const text of required) if (!html.includes(text)) throw new Error('Missing required security/UX guard: '+text);
+          if (html.includes('data-preview-role="owner"')) throw new Error('Public Owner preview shortcut returned');
+          if (html.includes('allowOwnerBootstrap: true')) throw new Error('Owner bootstrap reenabled in public client');
+          if (html.includes('./proposals.html')) throw new Error('Broken standalone Proposal Center link returned');
+          for (const anchor of ['services','contracts','method','contact']) {
+            if (!html.includes('href="#'+anchor+'"') || !html.includes('id="'+anchor+'"'))
+              throw new Error('Public website navigation missing section '+anchor);
+          }
+          console.log('PASS: OS cloud-login and navigation source regression guards');
+          NODE
