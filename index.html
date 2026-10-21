@@ -925,16 +925,7 @@ body.public-mode #authScreen,body.public-mode #appShell,body.public-mode #mobile
         </section>
         <div id="authMessage" class="auth-message hidden" role="status"></div>
 
-        <div id="previewAccess" class="preview-access">
-          <div class="divider"><span>PREVIEW THE ROLES NOW</span></div>
-          <p class="preview-note">Preview mode saves separately on this device. It demonstrates access rules but is not a substitute for cloud security.</p>
-          <div class="preview-role-grid">
-            <button class="preview-role" data-preview-role="owner" type="button"><strong>Owner</strong><span>Full company control</span></button>
-            <button class="preview-role" data-preview-role="operations_manager" type="button"><strong>Caprice / COO</strong><span>Full administrator access</span></button>
-            <button class="preview-role" data-preview-role="employee" type="button"><strong>Employee</strong><span>Assigned field work</span></button>
-            <button class="preview-role" data-preview-role="client" type="button"><strong>Client</strong><span>Property visibility</span></button>
-          </div>
-        </div>
+        <div id="previewAccess" class="preview-access hidden" aria-hidden="true"></div>
       </div>
       <button class="sc-site-back" type="button" data-return-site>← Back to public website</button>
       <p class="security-footnote">Production access uses Supabase Auth and PostgreSQL Row Level Security. Never place a Supabase secret or service-role key in this app.</p>
@@ -1281,7 +1272,7 @@ window.SECOND_CHANCE_CONFIG = Object.freeze({
   supabasePublishableKey: "sb_publishable_PRyYNqhTAhk5sr3wKbIC0g_bYCLEhwd",
   organizationId: "",
   organizationName: "Second Chance Property Solutions",
-  allowOwnerBootstrap: true,
+  allowOwnerBootstrap: false,
   syncDebounceMs: 500
 });
 
@@ -2744,13 +2735,6 @@ const { data, error } = await client.rpc("list_access_members");
   let activeInviteToken = new URLSearchParams(location.search).get("invite") || localStorage.getItem("secondChanceOS.pendingInviteToken") || "";
   let activeInvitePreview = null;
 
-  const previews = {
-    owner: { name: "Marquise D. Scott", email: "owner.preview@secondchance.local", role: "owner", employeeId: "MAR001", propertyIds: [] },
-    operations_manager: { name: "Caprice B. Louis-Scott", email: "caprice.preview@secondchance.local", role: "operations_manager", employeeId: "CAP001", propertyIds: [] },
-    employee: { name: "Field Employee Preview", email: "employee.preview@secondchance.local", role: "employee", employeeId: "EMP001", propertyIds: [] },
-    client: { name: "Property Client Preview", email: "client.preview@secondchance.local", role: "client", employeeId: "", propertyIds: ["DEMO-PROP"] }
-  };
-
   function setMessage(message, tone = "info") {
     authMessage.textContent = message;
     authMessage.className = `auth-message ${tone}`;
@@ -2815,6 +2799,9 @@ const { data, error } = await client.rpc("list_access_members");
   }
 
   async function finishLogin(context) {
+    if (context?.mode !== "cloud" || !context?.session?.user?.id || context.userId !== context.session.user.id || !context.organizationId || !context.role) {
+      throw new Error("Authorized cloud login is required.");
+    }
     currentContext = context;
     document.body.dataset.role = context.role;
     document.body.dataset.mode = context.mode;
@@ -2891,18 +2878,6 @@ const { data, error } = await client.rpc("list_access_members");
     }
   });
 
-  document.querySelectorAll("[data-preview-role]").forEach(button => button.addEventListener("click", async () => {
-    const preview = previews[button.dataset.previewRole];
-    clearMessage();
-    await finishLogin({
-      ...preview,
-      mode: "preview",
-      userId: `preview-${preview.role}`,
-      organizationId: `LOCAL-${preview.role.toUpperCase()}`,
-      organizationName: "Second Chance Property Solutions"
-    });
-  }));
-
   signOutBtn.addEventListener("click", async () => {
     try {
       if (currentContext?.mode === "cloud") await window.SCOSCloud.signOut();
@@ -2927,8 +2902,8 @@ const { data, error } = await client.rpc("list_access_members");
     const isConfigured = window.SCOSCloud.configured();
     authModeNote.textContent = isConfigured
       ? "Cloud security is configured. Sign in with your company account."
-      : "Cloud setup is not connected yet. Use a role preview below, or add your Supabase keys in config.js.";
-    previewAccess.classList.toggle("preview-cloud-warning", isConfigured);
+      : "Secure cloud sign-in is unavailable. Contact the administrator.";
+    previewAccess.classList.add("hidden");
     if (!isConfigured) return;
     try {
       if (activeInviteToken) await loadInvitePreview();
