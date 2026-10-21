@@ -834,6 +834,18 @@ body.public-mode #authScreen,body.public-mode #appShell,body.public-mode #mobile
   <link rel="stylesheet" href="./os-theme.css" />
   <link rel="stylesheet" href="scos-expenses.css?v=20260829-1" data-scos-expenses-css="1" />
   <script src="scos-expenses.js?v=20260829-3" data-scos-expenses-js="1" defer></script>
+
+<style id="scos-navigation-upgrade-20261021">
+/* Keep the public site's core links available on phone screens. */
+@media (max-width:900px) {
+  #publicSite .sc-site-header-in {flex-wrap:wrap; row-gap:8px;}
+  #publicSite .sc-site-nav {order:3; flex:0 0 100%; display:flex; align-items:center; gap:7px; overflow-x:auto; padding:0 0 12px; -webkit-overflow-scrolling:touch; scrollbar-width:thin;}
+  #publicSite .sc-site-nav a:not(.sc-site-button) {display:inline-flex; flex:none; align-items:center; min-height:39px; padding:7px 10px; border:1px solid #e1d3ba; background:#fffaf0; border-radius:10px; font-size:12px; white-space:nowrap;}
+  #publicSite .sc-site-nav .sc-site-button {flex:none; white-space:nowrap;}
+}
+#publicSite .sc-site-nav a:focus-visible {outline:3px solid #b9872f; outline-offset:3px;}
+#publicSite #contact {scroll-margin-top:90px;}
+</style>
 </head>
 <body class="auth-pending public-mode">
 
@@ -845,7 +857,7 @@ body.public-mode #authScreen,body.public-mode #appShell,body.public-mode #mobile
           <span class="sc-site-brand-copy"><strong>SECOND CHANCE</strong><span>PROPERTY SOLUTIONS</span></span>
         </a>
         <nav class="sc-site-nav" aria-label="Website navigation">
-          <a href="#services">Services</a><a href="#contracts">Contracts</a><a href="#method">Our Method</a>
+          <a href="#services">Services</a><a href="#contracts">Contracts</a><a href="#method">Our Method</a><a href="#contact">Get a Quote</a>
           <a class="sc-site-button sc-site-button-gold" href="#app" data-open-os>Client &amp; Team Login</a>
         </nav>
       </div>
@@ -867,7 +879,7 @@ body.public-mode #authScreen,body.public-mode #appShell,body.public-mode #mobile
       <section class="sc-site-section sc-site-section-alt" id="services"><div class="sc-site-wrap"><div class="sc-site-section-head"><div class="sc-site-eyebrow">SERVICES</div><h2>Cleaning operations designed for real properties.</h2><p>Each job is organized through Second Chance OS so management can review progress, findings, photos, completion status, and billing from one place.</p></div><div class="sc-site-card-grid"><article class="sc-site-card"><b>01 · CORE SERVICE</b><h3>Apartment Unit Turns</h3><p>Structured cleaning for vacant apartment units, documented through the Secure-first Second Chance Turn Method™.</p></article><article class="sc-site-card"><b>02 · COMMERCIAL</b><h3>Office Cleaning</h3><p>Scheduled cleaning solutions for offices, leasing spaces, common areas, and business environments.</p></article><article class="sc-site-card"><b>03 · SPECIAL PROJECTS</b><h3>Event Cleaning</h3><p>Pre-event, active-event, and post-event cleaning support arranged around the client’s schedule and scope.</p></article></div></div></section>
       <section class="sc-site-section" id="contracts"><div class="sc-site-wrap"><div class="sc-site-section-head"><div class="sc-site-eyebrow">CONTRACT PROPOSALS</div><h2>One clear scope. One flat-rate contract.</h2><p>Every property receives a customized proposal after the walkthrough and scope review. Contract pricing is not published online.</p></div><div class="sc-site-card-grid"><article class="sc-site-card"><b>01 · WALKTHROUGH</b><h3>Review the Property</h3><p>We confirm the service needs, access, condition, schedule, and expectations with your team.</p></article><article class="sc-site-card"><b>02 · WRITTEN SCOPE</b><h3>Define the Work</h3><p>Your proposal clearly documents the approved services, responsibilities, and operating details.</p></article><article class="sc-site-card"><b>03 · FLAT RATE</b><h3>Approve the Contract</h3><p>We present one customized flat-rate contract proposal for the approved scope—without public price lists.</p></article></div></div></section>
       <section class="sc-site-section sc-site-section-alt" id="method"><div class="sc-site-wrap"><div class="sc-site-section-head"><div class="sc-site-eyebrow">THE SECOND CHANCE STANDARD™</div><h2>A documented path from access to delivery.</h2></div><div class="sc-site-method"><article class="sc-site-step"><span>PHASES 1–2</span><h3>Secure &amp; Assess</h3><p>Confirm authorized access and safety first, then document the actual condition and scope.</p></article><article class="sc-site-step"><span>PHASES 3–4</span><h3>Prepare &amp; Reveal</h3><p>Stage tools and supplies, remove loose debris, and expose the unit’s true cleaning needs.</p></article><article class="sc-site-step"><span>PHASES 5–6</span><h3>Restore &amp; Detail</h3><p>Report out-of-scope findings and complete the detailed cleaning work.</p></article><article class="sc-site-step"><span>PHASES 7–8</span><h3>Verify &amp; Deliver</h3><p>Complete quality control, final photos, management approval, and client-ready closeout.</p></article></div></div></section>
-      <section class="sc-site-cta"><div class="sc-site-wrap"><div class="sc-site-cta-box"><div><div class="sc-site-eyebrow">LET’S GET THE PROPERTY MOVING</div><h2>Request a contract proposal.</h2><p>Share the property, requested services, preferred schedule, access details, and anything else we should know.</p></div><a class="sc-site-button sc-site-button-gold" href="mailto:office@secondchanceps.com?subject=Second%20Chance%20Property%20Solutions%20Quote%20Request">Email Second Chance</a></div></div></section>
+      <section class="sc-site-cta" id="contact"><div class="sc-site-wrap"><div class="sc-site-cta-box"><div><div class="sc-site-eyebrow">LET’S GET THE PROPERTY MOVING</div><h2>Request a contract proposal.</h2><p>Share the property, requested services, preferred schedule, access details, and anything else we should know.</p></div><a class="sc-site-button sc-site-button-gold" href="mailto:office@secondchanceps.com?subject=Second%20Chance%20Property%20Solutions%20Quote%20Request">Email Second Chance</a></div></div></section>
     </main>
     <footer class="sc-site-footer"><div class="sc-site-wrap sc-site-footer-in"><span>© 2026 Second Chance Property Solutions</span><span>Seattle Metro · Cleaning services and documented property solutions</span></div></footer>
   </div>
@@ -11009,7 +11021,8 @@ const scos74LegacyStartApp=startApp;
     { id: "people22", label: "People", icon: "♟" },
     { id: "money22", label: "Money", icon: "$" },
     { id: "academy22", label: "Training", icon: "▶" },
-    { id: "command22", label: "Command", icon: "◆" }
+    { id: "command22", label: "Control Tower", icon: "◆" },
+    { id: "settings", label: "Settings & Backup", icon: "⚙" }
   ];
   const scos22CustomPages = new Set(["dashboard","leads22","win22","run22","people22","money22","academy22","command22","clientReports22"]);
 
@@ -11071,8 +11084,8 @@ const scos74LegacyStartApp=startApp;
 
   function scos22TopNavForRole(){
     const role = scos22Role();
-    if(role === "client") return [{id:"dashboard",label:"Home",icon:"⌂"},{id:"portal",label:"My Jobs",icon:"◎"}];
-    if(["employee","crew_leader"].includes(role)) return scos22NavItems.filter(item => ["dashboard","run22","academy22"].includes(item.id));
+    if(role === "client") return [{id:"dashboard",label:"Home",icon:"⌂"},{id:"portal",label:"My Jobs",icon:"◎"},{id:"settings",label:"Settings",icon:"⚙"}];
+    if(["employee","crew_leader"].includes(role)) return scos22NavItems.filter(item => ["dashboard","run22","academy22","settings"].includes(item.id));
     if(role === "field_manager") return scos22NavItems.filter(item => !["leads22","win22","money22"].includes(item.id));
     if(role === "administrative_staff") return scos22NavItems.filter(item => !["run22","command22"].includes(item.id));
     return scos22NavItems;
@@ -11346,7 +11359,7 @@ const scos74LegacyStartApp=startApp;
     const vendorReady=vendor.filter(v=>v.ready_for_manual_submission||v.status==="ready_for_manual_submission").length;
     const liveLeads=leads.filter(l=>l.is_live_lead||String(l.lead_record_type||"")==="active_lead");
     return `<div class="scos22-shell">
-      <section class="scos22-hero compact"><div><span class="scos22-eyebrow">WIN WORK</span><h2>Turn interest into approved work.</h2><p>Lead review, outreach, vendor packets, proposals, quotes and agreements stay in one pipeline.</p></div><div class="scos22-hero-actions"><button class="btn btn-primary" data-scos22-proposal-center>Open Proposal Center</button></div></section>
+      <section class="scos22-hero compact"><div><span class="scos22-eyebrow">WIN WORK</span><h2>Turn interest into approved work.</h2><p>Lead review, outreach, vendor packets, proposals, quotes and agreements stay in one pipeline.</p></div><div class="scos22-hero-actions"><button class="btn btn-primary" data-scos22-proposal-center>Open Quote Builder</button></div></section>
       <section class="scos22-metrics">${scos22Metric("Active Leads",liveLeads.length,"Sales pipeline")}${scos22Metric("Open Quotes",quoteOpen,"Awaiting next step")}${scos22Metric("Agreements",agreements.length,"Service agreements")}${scos22Metric("Vendor Ready",vendorReady,"Ready for manual submission")}</section>
       <section class="panel"><div class="panel-header"><div><div class="panel-kicker">SALES PIPELINE</div><h2>Move the opportunity forward</h2></div></div><div class="scos22-command-grid">
         <button class="scos22-command-card" data-go="leads22"><span>1 · FIND</span><strong>${(scos22Data.prospects||[]).length}</strong><small>Ranked opportunities</small></button>
@@ -11493,7 +11506,7 @@ const scos74LegacyStartApp=startApp;
     const map={
       dashboard:["What Needs Attention?",()=>document.querySelector(".scos22-attention")?.scrollIntoView({behavior:"smooth"})],
       leads22:["Refresh Leads",()=>scos22LoadWorkspace(true,true)],
-      win22:["Open Proposal Center",()=>{window.location.href="./proposals.html";}],
+      win22:["Open Quote Builder",()=>navigate("quotes")],
       run22:["+ Turn Request",()=>scos22OpenTurnRequest()],
       people22:["Team & Access",()=>navigate("employees")],
       money22:["Money Guard",()=>document.getElementById("scos22MoneyGuardForm")?.scrollIntoView({behavior:"smooth"})],
@@ -11733,7 +11746,7 @@ const scos74LegacyStartApp=startApp;
     }
     let actions=[];
     if(["employee","crew_leader"].includes(role)) actions=[["📸","Photo",()=>navigate("run22")],["!","Issue",()=>openForm("issue")],["▶","Training",()=>navigate("academy22")]];
-    else if(scos22IsCaprice()) actions=[["◎","Lead",()=>navigate("leads22")],["✦","Proposal",()=>{window.location.href="./proposals.html";}],["$","Invoice",()=>openForm("invoice")],["♟","Employee",()=>authContext.mode==="cloud"?openInviteDialog():openForm("employee")]];
+    else if(scos22IsCaprice()) actions=[["◎","Lead",()=>navigate("leads22")],["✦","Quote",()=>navigate("quotes")],["$","Invoice",()=>openForm("invoice")],["♟","Employee",()=>authContext.mode==="cloud"?openInviteDialog():openForm("employee")]];
     else actions=[["▦","Turn Request",()=>scos22OpenTurnRequest()],["▥","Property",()=>openForm("property")],["!","Issue",()=>openForm("issue")],["📧","Client Report",()=>navigate("run22")]];
     scos22OpenDialog("Quick Add",`<div class="scos22-quick-grid">${actions.map((a,i)=>`<button type="button" data-scos22-quick-action="${i}"><span>${a[0]}</span><b>${a[1]}</b></button>`).join("")}</div>`,"ONE-TAP ACTIONS");
     scos22DialogContext={kind:"quick-actions",actions};
@@ -11766,7 +11779,7 @@ const scos74LegacyStartApp=startApp;
       if(el.hasAttribute("data-scos22-close-dialog"))return scos22CloseDialog();
       if(el.dataset.scos22Mobile)return scos22OpenQuickMenu(el.dataset.scos22Mobile);
       if(el.dataset.scos22QuickAction!==undefined){const a=scos22DialogContext?.actions?.[Number(el.dataset.scos22QuickAction)];scos22CloseDialog();return a?.[2]?.();}
-      if(el.hasAttribute("data-scos22-proposal-center")){window.location.href="./proposals.html";return;}
+      if(el.hasAttribute("data-scos22-proposal-center")){navigate("quotes");return;}
       if(el.dataset.scos22Question){scos22AskAnswer=scos22Ask(el.dataset.scos22Question);return render();}
       if(el.hasAttribute("data-scos22-ask-focus")){document.getElementById("scos22AskForm")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
     }catch(error){console.error(error);toast(error.message||"Second Chance OS action failed.");}
@@ -11867,13 +11880,11 @@ const scos74LegacyStartApp=startApp;
       proposalLink.setAttribute("data-proposal-center-link", "true");
       proposalLink.querySelectorAll("[id]").forEach(function (element) { element.removeAttribute("id"); });
       const textParts = proposalLink.querySelectorAll("span");
-      if (textParts.length) textParts[textParts.length - 1].textContent = "Proposal Center";
-      else proposalLink.textContent = "✦ Proposal Center";
-      if (proposalLink.tagName === "A") proposalLink.href = "./proposals.html";
-      else {
-        proposalLink.type = "button";
-        proposalLink.addEventListener("click", function () { window.location.href = "./proposals.html"; });
-      }
+      if (textParts.length) textParts[textParts.length - 1].textContent = "Quotes & Proposals";
+      else proposalLink.textContent = "✦ Quotes & Proposals";
+      proposalLink.setAttribute("data-go", "quotes");
+      if (proposalLink.tagName === "A") proposalLink.href = "#app";
+      else proposalLink.type = "button";
       operationsLink.insertAdjacentElement("afterend", proposalLink);
     });
   }
