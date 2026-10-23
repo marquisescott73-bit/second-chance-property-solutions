@@ -217,7 +217,7 @@
   }
 
   function summary() {
-    const rows = state.expenses.map(payloadOf);
+    const rows = state.expenses.map(payloadOf).filter(row => !row.voidedAt);
     const total = rows.reduce((sum, x) => sum + Number(x.amount || 0), 0);
     const month = today().slice(0, 7);
     const thisMonth = rows.filter(x => String(x.date || "").slice(0, 7) === month).reduce((sum, x) => sum + Number(x.amount || 0), 0);
@@ -242,7 +242,7 @@
     const select = $("#scosExpenseCategoryFilter");
     if (!select) return;
     const current = select.value;
-    const cats = [...new Set(state.expenses.map(row => String(payloadOf(row).category || "").trim()).filter(Boolean))].sort();
+    const cats = [...new Set(state.expenses.map(payloadOf).filter(row => !row.voidedAt).map(row => String(row.category || "").trim()).filter(Boolean))].sort();
     select.innerHTML = `<option value="">All categories</option>${cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}`;
     if (cats.includes(current)) select.value = current;
   }
@@ -257,6 +257,7 @@
   function filteredRows() {
     return state.expenses.filter(row => {
       const p = payloadOf(row);
+      if (p.voidedAt) return false;
       const hay = [p.vendor, p.category, p.notes, p.reference, p.paidBy, propertyName(p.propertyId), p.unitId].join(" ").toLowerCase();
       if (state.query && !hay.includes(state.query)) return false;
       if (state.category && String(p.category) !== state.category) return false;
@@ -273,7 +274,8 @@
     if (!el) return;
     const rows = filteredRows();
     if (!rows.length) {
-      el.innerHTML = `<div class="scos-expense-empty"><strong>${state.expenses.length ? "No expenses match this filter." : "No expenses yet."}</strong><span>${state.expenses.length ? "Clear a filter to see more records." : "Tap + Add Expense to record the first one."}</span></div>`;
+      const activeCount = state.expenses.filter(row => !payloadOf(row).voidedAt).length;
+      el.innerHTML = `<div class="scos-expense-empty"><strong>${activeCount ? "No expenses match this filter." : "No expenses yet."}</strong><span>${activeCount ? "Clear a filter to see more records." : "Tap + Add Expense to record the first one."}</span></div>`;
       return;
     }
     el.innerHTML = `<div class="scos-expense-table-wrap"><table class="scos-expense-table"><thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th>Paid by</th><th>Property / Job</th><th>Amount</th><th>Reimbursement</th><th>Receipt</th><th></th></tr></thead><tbody>${rows.map(expenseRowHtml).join("")}</tbody></table></div>`;
@@ -437,16 +439,26 @@
     const row = state.expenses.find(x => String(x.id) === String(id));
     if (!row) return;
     const p = payloadOf(row);
-    if (!confirm(`Delete the ${money(p.amount)} expense from ${p.vendor || "this vendor"}? This cannot be undone.`)) return;
+    if (p.voidedAt) return;
+    if (!confirm(`Delete the ${money(p.amount)} expense from ${p.vendor || "this vendor"}? This will remove it from active totals while preserving its audit history and receipt.`)) return;
+    const reason = prompt("Reason for deleting this expense:", "Entered in error");
+    if (reason === null) return;
     try {
-      const { error } = await state.client.from("business_expenses").delete().eq("organization_id", state.orgId).eq("id", id);
+      await identifyOrganization();
+      const now = new Date().toISOString();
+      const nextPayload = { ...row.payload, voidedAt: now, voidedBy: state.session.user.email || "Owner", voidReason: reason.trim() || "Entered in error", status: "Voided" };
+      const { data, error } = await state.client.from("business_expenses")
+        .update({ payload: nextPayload, updated_by: state.session.user.id, updated_at: now })
+        .eq("organization_id", state.orgId).eq("id", id)
+        .select("organization_id,id,property_id,unit_id,payload,updated_by,created_at,updated_at")
+        .maybeSingle();
       if (error) throw error;
-      if (p.receiptPath) await state.client.storage.from(RECEIPT_BUCKET).remove([p.receiptPath]);
-      state.expenses = state.expenses.filter(x => String(x.id) !== String(id));
+      if (!data) throw new Error("The company expense could not be updated. No record was deleted.");
+      state.expenses = state.expenses.map(x => String(x.id) === String(id) ? data : x);
       renderAll();
-      setStatus("Expense deleted.", "success");
+      setStatus("Expense removed from active records. Receipt and audit history preserved.", "success");
       document.dispatchEvent(new CustomEvent("scos:expenses-updated", { detail: summary() }));
-    } catch (error) { setStatus(error?.message || "Expense could not be deleted.", "error"); }
+    } catch (error) { setStatus(error?.message || "Expense could not be removed.", "error"); }
   }
 
   function exportCsv() {
