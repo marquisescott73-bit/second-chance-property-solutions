@@ -78,3 +78,32 @@ jobs:
           }
           console.log('PASS: OS cloud-login and navigation source regression guards');
           NODE
+
+      - name: Documentation Center expense deletion regression test
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html','utf8');
+          const js = fs.readFileSync('scos-expenses.js','utf8');
+          const requiredHtml = [
+            'function tc2RecordedExpenseRegister()',
+            'data-tc2-action="delete-expense"',
+            'if(action==="delete-expense")',
+            'if(!tc2IsFullTaxAdmin())',
+            '.eq("organization_id",authContext.organizationId).eq("id",expense.id)',
+            'voidedAt:now',
+            'tcSave("Expense removed from active records."',
+            'if (expense?.voidedAt) return 0;'
+          ];
+          const requiredJs = [
+            'if (p.voidedAt) return false;',
+            '.filter(row => !row.voidedAt)',
+            'voidedAt: now',
+            'Receipt and audit history preserved.'
+          ];
+          for (const value of requiredHtml) if (!html.includes(value)) throw new Error('Missing documented expense correction guard: '+value);
+          for (const value of requiredJs) if (!js.includes(value)) throw new Error('Missing expense-screen correction guard: '+value);
+          if (js.includes('.delete().eq("organization_id", state.orgId)')) throw new Error('Hard-delete of expense records was reintroduced');
+          if (js.includes('RECEIPT_BUCKET).remove([p.receiptPath]')) throw new Error('Deleting an expense would destroy its receipt');
+          console.log('PASS: expense removal is owner/COO gated, organization-scoped, and receipt preserving');
+          NODE
